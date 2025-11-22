@@ -31,7 +31,7 @@ import java.util.function.BiConsumer;
  */
 @Getter
 @Slf4j
-public class SwingRenderer extends JPanel implements Renderer<BufferedImage> {
+public class SwingRenderer implements Renderer<BufferedImage> {
     @Nullable
     protected JFrame frame;
     @Nullable
@@ -49,12 +49,14 @@ public class SwingRenderer extends JPanel implements Renderer<BufferedImage> {
     protected Runnable postRender;
     @Setter
     protected BiConsumer<Integer, Double> renderLoopAction;
+    protected java.awt.Canvas swingCanvas;
+    protected int buffers;
 
     /**
      * Empty constructor. Creates a new SwingRenderer instance with default values
      */
     public SwingRenderer() {
-        this(-1, null, Executors.newSingleThreadExecutor());
+        this(-1, null, Executors.newSingleThreadExecutor(), 2);
     }
 
     /**
@@ -66,17 +68,19 @@ public class SwingRenderer extends JPanel implements Renderer<BufferedImage> {
      *                 By setting this to {@code null} this renderer will use the thread the window is created on for the render-loop,
      *                 which is not recommended as this will block the entire thread.
      */
-    public SwingRenderer(int maxFPS, @Nullable Canvas<BufferedImage> canvas, @Nullable ExecutorService executor) {
+    public SwingRenderer(int maxFPS, @Nullable Canvas<BufferedImage> canvas, @Nullable ExecutorService executor, int buffers) {
         this.canvas = canvas == null ? new Canvas<>() : canvas;
         this.maxFps = maxFPS <= 0 ? 60 : maxFPS;
         this.executor = executor;
+        this.buffers = buffers < 1 ? 2 : buffers;
 
         this.loop = Loop.builder()
                 .runOnThread(executor == null)
                 .threadName("Swing-Rendering")
                 .build();
 
-        preRender = () -> {};
+        preRender = () -> {
+        };
         postRender = () -> log.info("Shutting down render loop");
         renderLoopAction = (fps, deltaTime) -> {
             this.fps = fps;
@@ -92,42 +96,44 @@ public class SwingRenderer extends JPanel implements Renderer<BufferedImage> {
      */
     @Override
     public void createWindow(int width, int height, String title) {
-        if (this.frame != null) {
+        if (frame != null) {
             log.warn("Could not create window, only one window per renderer is allowed.");
             return;
         }
 
-        System.setProperty("sun.java2d.opengl", "true");
-
-        this.frame = new JFrame();
-
-        frame.setTitle(title);
-        frame.setSize(width, height);
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        frame.setLocationRelativeTo(null);
-        frame.add(this);
-        frame.setVisible(true);
-        frame.validate();
-        frame.requestFocus();
+        //System.setProperty("sun.java2d.opengl", "true");
 
         SwingUtilities.invokeLater(() -> {
-            frame.createBufferStrategy(2);
+            frame = new JFrame();
+            swingCanvas = new java.awt.Canvas();
+            swingCanvas.setPreferredSize(new Dimension(width, height));
+            swingCanvas.setIgnoreRepaint(true);
 
-            this.bufferStrategy = frame.getBufferStrategy();
-            this.setDoubleBuffered(false);
+            frame.setTitle(title);
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.setLocationRelativeTo(null);
+            frame.add(swingCanvas);
+            frame.pack();
+            frame.setVisible(true);
+            frame.validate();
+            frame.requestFocus();
+
+
+            swingCanvas.createBufferStrategy(getBuffers());
+            bufferStrategy = swingCanvas.getBufferStrategy();
 
             brush = new SwingBrush(this, bufferStrategy.getDrawGraphics());
 
             startRenderLoop();
-        });
 
-
-        frame.addWindowListener(new WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent e) {
-                loop.stop();
-                log.info("JFrame has been terminated");
-            }
+            frame.addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosing(WindowEvent e) {
+                    loop.stop();
+                    log.info("JFrame has been terminated");
+                }
+            });
+            log.info("Created window and started rendering");
         });
     }
 
@@ -211,17 +217,18 @@ public class SwingRenderer extends JPanel implements Renderer<BufferedImage> {
     public void render() {
         if (frame == null
                 || frame.getState() == JFrame.ICONIFIED
-                || !frame.isDisplayable()
-                || frame.getWidth() <= 0
-                || frame.getHeight() <= 0
+                || !swingCanvas.isDisplayable()
+                || swingCanvas.getWidth() <= 0
+                || swingCanvas.getHeight() <= 0
                 || getCanvas() == null) {
             return;
         }
 
         try {
             if (bufferStrategy == null) {
-                frame.createBufferStrategy(2);
-                bufferStrategy = frame.getBufferStrategy();
+                swingCanvas.createBufferStrategy(buffers);
+                bufferStrategy = swingCanvas.getBufferStrategy();
+                return;
             }
 
             boolean done = false;
@@ -229,7 +236,7 @@ public class SwingRenderer extends JPanel implements Renderer<BufferedImage> {
                 Graphics2D g = null;
                 try {
                     g = (Graphics2D) bufferStrategy.getDrawGraphics();
-                    g.clearRect(0, 0, getWidth(), getHeight());
+                    g.clearRect(0, 0, swingCanvas.getWidth(), swingCanvas.getHeight());
 
                     brush.setGraphics(g);
                     getCanvas().render(brush);
@@ -262,10 +269,5 @@ public class SwingRenderer extends JPanel implements Renderer<BufferedImage> {
     @Override
     public int getWindowHeight() {
         return frame == null ? -1 : frame.getHeight();
-    }
-
-    @Override
-    protected void paintComponent(Graphics g) {
-        //Keep empty to prevent flickering
     }
 }
