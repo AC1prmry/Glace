@@ -78,7 +78,7 @@ public class GameObjectManager<I> {
         gameObject.internalCreate(this);
         renderer.getCanvas().addRenderable(gameObject);
 
-        log.info("Added new GameObject of type '{}' with UUID '{}'",
+        log.info("Added new GameObject of type '{}' with ID '{}'",
                 gameObject.getClass().getSimpleName(),
                 gameObject.getId());
 
@@ -141,8 +141,7 @@ public class GameObjectManager<I> {
      * @return A list of game objects at the given position
      */
     public synchronized List<AbstractObjectBase<I>> getObjectsAt(int x, int y) {
-        posFinderHitBox.setX(x);
-        posFinderHitBox.setY(y);
+        posFinderHitBox.setPosition(x, y);
 
         rwLock.readLock().lock();
         try {

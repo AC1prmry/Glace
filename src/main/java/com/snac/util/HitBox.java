@@ -1,20 +1,19 @@
 package com.snac.util;
 
+import lombok.AccessLevel;
 import lombok.Getter;
-import lombok.Setter;
 
 import java.awt.*;
 import java.io.Serializable;
 import java.util.function.Consumer;
 
 @Getter
-@Setter
 public class HitBox extends Attachable<HitBox> implements Serializable {
     private int x;
     private int y;
     private int width;
     private int height;
-    private boolean visible = false;
+    @Getter(AccessLevel.NONE)
     private final Point location = new Point();
 
     public HitBox(int x, int y, int width, int height) {
@@ -41,25 +40,53 @@ public class HitBox extends Attachable<HitBox> implements Serializable {
     }
 
     public void move(int dx, int dy) {
-        onMove(x, y, x + dx, y + dy);
+        var oldX = this.x;
+        var oldY = this.y;
+
+        onMove(x + dx, y + dy);
         x += dx;
         y += dy;
+        onMoved(oldX, oldY);
     }
 
     public void setBounds(int x, int y, int width, int height) {
-        onMove(this.x, this.y, width, height);
+        var oldX = this.x;
+        var oldY = this.y;
+
+        onMove(x, y);
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
+        onMoved(oldX, oldY);
+    }
+
+    public void setPosition(int x, int y) {
+        var oldX = this.x;
+        var oldY = this.y;
+
+        onMove(x, y);
+        this.x = x;
+        this.y = y;
+        onMoved(oldX, oldY);
     }
 
     public void setBounds(HitBox hitBox) {
-        onMove(getX(), getY(), hitBox.getX(), hitBox.getY());
+        var oldX = this.x;
+        var oldY = this.y;
+
+        onMove(hitBox.getX(), hitBox.getY());
         this.x = hitBox.getX();
         this.y = hitBox.getY();
         this.width = hitBox.getWidth();
         this.height = hitBox.getHeight();
+        onMoved(oldX, oldY);
+    }
+
+    protected void onMoved(int oldX, int oldY) {
+        childAction(child -> {
+            child.move(getX() - oldX, getY() - oldY);
+        });
     }
 
     public Point getLocation() {
@@ -67,11 +94,7 @@ public class HitBox extends Attachable<HitBox> implements Serializable {
         return location;
     }
 
-    public void onMove(int oldX, int oldY, int newX, int newY) {
-        childAction(child -> {
-            child.move(oldX - newX, oldY - newY);
-        });
-    }
+    protected void onMove(int newX, int newY) {}
 
     @Override
     public void childAction(Consumer<HitBox> childAction) {

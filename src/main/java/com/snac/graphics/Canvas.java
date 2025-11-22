@@ -143,9 +143,6 @@ public class Canvas<I> {
                 .filter(Renderable::visible)
                 .forEach(r -> {
                     r.render(brush);
-                    if (r instanceof AbstractObjectBase<?> aOb) {
-                        aOb.onRender(brush);
-                    }
                 });
     }
 }

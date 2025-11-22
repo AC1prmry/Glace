@@ -207,7 +207,6 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
      * @param newY the new Y-value the position is set to
      */
     protected void onPositionChange(double newX, double newY) {
-        updateAttachments(position.getX(), position.getY(), newX, newY);
         if (manager == null) {
             log.warn("Object manager is null. How is this possible?");
             return;
@@ -222,9 +221,9 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
         if (renderDistance > 0) {
             visible = distance < renderDistance;
         }
-        if (tickDistance > 0) {
-            disabled = distance > tickDistance;
-        }
+//        if (tickDistance > 0) {
+//            disabled = distance > tickDistance;
+//        }
     }
 
     /**
@@ -238,6 +237,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
      * @param oldY the Y-value before the position got updated
      */
     protected void onPositionChanged(double oldX, double oldY) {
+        updateAttachments(oldX, oldY, getPosition().getX(), getPosition().getY());
     }
 
     /**
@@ -259,7 +259,8 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
      *
      * @param brush drawing context provided by the renderer
      */
-    public void onRender(Brush<?> brush) {
+    @Override
+    public void render(Brush<I> brush) {
         if (showHitBox) {
             brush.drawRectangle(getHitBox().getX(), getHitBox().getY(), getHitBox().getWidth(), getHitBox().getHeight(), false);
             getHitBox().childAction(child -> {
@@ -282,7 +283,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
      * One-time initialization hook invoked after the object has been added to a valid {@link GameObjectManager}.
      */
     protected void onCreate() {
-        this.tickDistance = (Toolkit.getDefaultToolkit().getScreenSize().width / 2) + getWidth() + 200;
+        this.tickDistance = (Toolkit.getDefaultToolkit().getScreenSize().width / 2) + getWidth() + 600;
         this.renderDistance = tickDistance;
     }
 
@@ -319,10 +320,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
      * @return the hitbox updated with the current position and size of this object
      */
     public HitBox getHitBox() {
-        hitBox.setX(position.getXRound());
-        hitBox.setY(position.getYRound());
-        hitBox.setWidth(getWidth());
-        hitBox.setHeight(getHeight());
+        hitBox.setBounds(getPosition().getXRound(), getPosition().getYRound(), getWidth(), getHeight());
 
         return hitBox;
     }
@@ -346,7 +344,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
 
     /**
      * When called, {@link #showHitBox} is set to {@code true}
-     * and the hitbox (and its attached hitboxes) of this object gets rendered in {@link #onRender(Brush)}.
+     * and the hitbox (and its attached hitboxes) of this object gets rendered in {@link #render(Brush)}.
      */
     public void showHitBox() {
         if (!showHitBox) {
@@ -357,7 +355,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
 
     /**
      * When called, {@link #showHitBox} is set to {@code false}
-     * and the hitbox (and its attached hitboxes) of this object gets rendered in {@link #onRender(Brush)}.
+     * and the hitbox (and its attached hitboxes) of this object gets rendered in {@link #render(Brush)}.
      */
     public void hideHitBox() {
         if (showHitBox) {
