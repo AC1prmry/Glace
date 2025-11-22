@@ -18,6 +18,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
+//TODO: Make default implementations easier to use (interpolation, ...)
 @Getter
 @Setter
 @Slf4j
@@ -57,7 +58,7 @@ public final class Glace {
                 .build();
 
         imageLoader = new SwingImageLoader();
-        renderer = new SwingRenderer(60, null, null);
+        renderer = new SwingRenderer(60, null, null, 2);
         gameObjectManager = new GameObjectManager<>(renderer);
         animationHandler = new AnimationHandler<>(renderer);
 
@@ -78,8 +79,7 @@ public final class Glace {
     }
 
     private void startGameLoop(int tps) {
-        loop.start(() -> log.info("Starting game loop"),
-                tps,
+        loop.start(() -> log.info("Starting game loop"), tps,
                 (fps, deltaTime) -> {
                     tick(deltaTime);
                     this.currentGameLoopFPS = fps;
