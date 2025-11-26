@@ -104,7 +104,7 @@ public class Cache<T> {
             try {
                 cached.stream()
                         .filter(c -> !c.isExpired())
-                        .filter(obj -> (System.currentTimeMillis() - (isTemporalExpirationOnlyWhenUnused() ? obj.getLastUpdated() : obj.getTimeAdded()))
+                        .filter(obj -> (System.currentTimeMillis() - (isTemporalExpirationOnlyWhenUnused() ? obj.getLastUsed() : obj.getTimeAdded()))
                                 >= getExpireTimeUnit().toMillis(getExpiresAfter()))
                         .forEach(CachedObject::expire);
             } finally {
@@ -174,10 +174,12 @@ public class Cache<T> {
     public T get(String key) {
         lock.readLock().lock();
         try {
-            return cached.stream().filter(obj -> obj.getKey().equals(key))
+            return cached.stream()
+                    .filter(obj -> obj.getKey().equals(key))
                     .findFirst()
-                    .map(CachedObject::getObject)
+                    .map(CachedObject::use)
                     .orElse(null);
+
         } finally {
             lock.readLock().unlock();
         }
@@ -193,7 +195,7 @@ public class Cache<T> {
     public String getKey(T object) {
         lock.readLock().lock();
         try {
-            return cached.stream().filter(obj -> obj.object.equals(object))
+            return cached.stream().filter(obj -> obj.getObject().equals(object))
                     .map(CachedObject::getKey)
                     .findFirst()
                     .orElse(null);
@@ -267,7 +269,7 @@ public class Cache<T> {
         lock.readLock().lock();
         try {
             cached.stream()
-                    .filter(obj -> obj.object.equals(object))
+                    .filter(obj -> obj.getObject().equals(object))
                     .forEach(obj -> remove(obj.getKey()));
         } finally {
             lock.readLock().unlock();
@@ -351,12 +353,11 @@ public class Cache<T> {
      */
     @Getter
     public static class CachedObject<T> {
-        protected final Cache<?> cache;
+        protected final Cache<T> cache;
         protected final String key;
-        @Getter(AccessLevel.NONE)
-        public final T object;
+        protected final T object;
         protected final long timeAdded;
-        protected long lastUpdated;
+        protected long lastUsed;
         protected boolean expired;
 
         /**
@@ -366,19 +367,25 @@ public class Cache<T> {
          * @param key    The key of the stored object
          * @param object The object to store
          */
-        protected CachedObject(Cache<?> cache, String key, T object) {
+        protected CachedObject(Cache<T> cache, String key, T object) {
             this.cache = cache;
             this.key = key;
             this.object = object;
             this.timeAdded = System.currentTimeMillis();
-            this.lastUpdated = timeAdded;
+            this.lastUsed = timeAdded;
         }
 
         /**
-         * @return The object stored and set the {@link #lastUpdated} time to the current time.
+         * Almost the same as {@link #getObject()}
+         * but it also sets a new {@link #lastUsed} time and puts this object on top of cache (resets index).<br>
+         * This is necessary for {@link CacheBuilder#indexExpireAfter(int)}
+         * and {@link CacheBuilder#temporalExpirationOnlyWhenUnused(boolean)} to work.
+         *
+         * @return the core object stored by this cached object
          */
-        public T getObject() {
-            this.lastUpdated = System.currentTimeMillis();
+        public T use() {
+            this.lastUsed = System.currentTimeMillis();
+            cache.cached.addFirst(this);
             return object;
         }
 
@@ -399,7 +406,7 @@ public class Cache<T> {
                     "key='" + key + '\'' +
                     ", object=" + object +
                     ", timeAdded=" + timeAdded +
-                    ", lastUpdated=" + lastUpdated +
+                    ", lastUpdated=" + lastUsed +
                     ", expired=" + expired +
                     '}';
         }
@@ -419,7 +426,7 @@ public class Cache<T> {
         protected int indexExpireAfter = -1;
 
         static {
-            tick();
+            startTicking();
         }
 
         /**
@@ -427,7 +434,7 @@ public class Cache<T> {
          * and uses the {@link Loop} class to tick every created cache 20-times a second.
          * This is necessary to provide full cache functionality.
          */
-        protected static void tick() {
+        protected static void startTicking() {
             Loop.builder()
                     .runOnThread(true)
                     .threadName("Caching-Thread")
@@ -487,8 +494,13 @@ public class Cache<T> {
          * Sets the index threshold for automatic expiration of older cached entries.
          * <p>
          * If the given {@code indexExpireAfter} is greater than {@code 0}, older cached entries
-         * will expire automatically to prevent the cache to have more entries than this value sets.
+         * will expire automatically to prevent the cache from having more entries than this value sets.
          * If the value is {@code 0} or less, index-based expiration is disabled.
+         * <p>
+         * When objects are fetched, their index is reset to {@code 0}.
+         * (in case those objects got fetched via {@link #get(String)} or directly with
+         * {@link CachedObject#use()} (otherwise their index won't reset))
+         * This means that recently used objects are unlikely to be affected.
          *
          * @param indexExpireAfter the number of recent indices to keep; older entries will expire automatically.
          *                         A value of {@code 0} or less disables this behavior.

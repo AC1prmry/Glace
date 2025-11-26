@@ -476,7 +476,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
          * a tolerance if you add your own matching logic.
          * </p>
          *
-         * @param angle an angle in <b>degrees</b>
+         * @param angle an angle in degrees
          * @return the matching {@code Direction}, or {@code null} if none matches exactly
          */
         @Nullable
