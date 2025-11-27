@@ -35,22 +35,29 @@ public interface CacheListener {
     /**
      * Called before a cached object expires.
      *
-     * @param object The object that is about to expire
+     * @param object the object that is about to expire
      */
     void onCachedObjectExpire(Cache.CachedObject<?> object);
 
     /**
      * Called before a cached object is removed from the cache.
      *
-     * @param object The object that is about to be removed
+     * @param object the object that is about to be removed
      */
     void onCachedObjectRemove(Cache.CachedObject<?> object);
 
     /**
      * Called before a new object is added to the cache.
      *
-     * @param object The object that is about to be added
+     * @param object the object that is about to be added
      */
     void onCachedObjectAdd(Cache.CachedObject<?> object);
+
+    /**
+     * Called when a cached object got fetched via {@link Cache.CachedObject#use()}.
+     *
+     * @param object the object which is about to be fetched
+     */
+    void onCacheObjectUse(Cache.CachedObject<?> object);
 }
 

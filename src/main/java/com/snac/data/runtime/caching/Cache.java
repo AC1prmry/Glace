@@ -40,10 +40,11 @@ import java.util.stream.Stream;
 @Getter
 @Slf4j
 public class Cache<T> {
-    protected final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+    protected final ReentrantReadWriteLock lock;
     @Getter(AccessLevel.NONE)
-    protected final LinkedHashSet<CachedObject<T>> cached = new LinkedHashSet<>();
-    protected final List<CacheListener> listeners = Collections.synchronizedList(new ArrayList<>());
+    protected final LinkedHashSet<CachedObject<T>> cached;
+    @Getter(AccessLevel.NONE)
+    protected final List<CacheListener> listeners;
     protected final int expiresAfter;
     protected final TimeUnit expireTimeUnit;
     protected final boolean deleteAfterExpiration;
@@ -71,6 +72,10 @@ public class Cache<T> {
         this.temporalExpirationOnlyWhenUnused = temporalExpirationOnlyWhenUnused;
         this.oldIndexesExpire = oldIndexExpire;
         this.indexExpireAfter = indexExpireAfter;
+
+        this.lock = new ReentrantReadWriteLock();
+        this.cached = new LinkedHashSet<>();
+        this.listeners = Collections.synchronizedList(new ArrayList<>());
     }
 
     /**
@@ -104,8 +109,9 @@ public class Cache<T> {
             try {
                 cached.stream()
                         .filter(c -> !c.isExpired())
-                        .filter(obj -> (System.currentTimeMillis() - (isTemporalExpirationOnlyWhenUnused() ? obj.getLastUsed() : obj.getTimeAdded()))
-                                >= getExpireTimeUnit().toMillis(getExpiresAfter()))
+                        .filter(obj -> (System.currentTimeMillis() - (isTemporalExpirationOnlyWhenUnused()
+                                ? obj.getLastUsed()
+                                : obj.getTimeAdded())) >= getExpireTimeUnit().toMillis(getExpiresAfter()))
                         .forEach(CachedObject::expire);
             } finally {
                 lock.readLock().unlock();
@@ -131,11 +137,16 @@ public class Cache<T> {
         if (isOldIndexesExpire() && ueIndexes > getIndexExpireAfter()) {
             lock.readLock().lock();
             try {
-                for (var delIndex = ueIndexes - getIndexExpireAfter(); delIndex > 0; delIndex--) {
-                    cached.stream()
-                            .filter(obj -> !obj.isExpired())
-                            .findFirst()
-                            .ifPresent(CachedObject::expire);
+                var targetExpirations = ueIndexes - getIndexExpireAfter();
+                var expired = 0;
+
+                var it = cached.iterator();
+                while (it.hasNext() && expired < targetExpirations) {
+                    var obj = it.next();
+                    if (!obj.isExpired()) {
+                        obj.expire();
+                        expired++;
+                    }
                 }
             } finally {
                 lock.readLock().unlock();
@@ -195,7 +206,7 @@ public class Cache<T> {
     public String getKey(T object) {
         lock.readLock().lock();
         try {
-            return cached.stream().filter(obj -> obj.getObject().equals(object))
+            return cached.stream().filter(obj -> obj.peek().equals(object))
                     .map(CachedObject::getKey)
                     .findFirst()
                     .orElse(null);
@@ -246,7 +257,8 @@ public class Cache<T> {
     public void remove(String key) {
         lock.writeLock().lock();
         try {
-            cached.stream().filter(obj -> obj.getKey().equals(key))
+            cached.stream()
+                    .filter(obj -> obj.getKey().equals(key))
                     .forEach(obj -> {
                         listeners.forEach(lstnr -> lstnr.onCachedObjectRemove(obj));
                         cached.remove(obj);
@@ -269,7 +281,7 @@ public class Cache<T> {
         lock.readLock().lock();
         try {
             cached.stream()
-                    .filter(obj -> obj.getObject().equals(object))
+                    .filter(obj -> obj.peek().equals(object))
                     .forEach(obj -> remove(obj.getKey()));
         } finally {
             lock.readLock().unlock();
@@ -306,7 +318,8 @@ public class Cache<T> {
      * <h3>Important Notes:</h3>
      * <ul>
      *   <li>
-     *     Accessing the cached object via {@link CachedObject#getObject()} updates its
+     *       TODO: Fix dox
+     *     Accessing the cached object via {@link CachedObject#use()} updates its
      *     last usage timestamp.
      *     This may prevent expiration if the cache is configured
      *     via {@link CacheBuilder#temporalExpirationOnlyWhenUnused(boolean)} to keep recently used entries.
@@ -355,6 +368,7 @@ public class Cache<T> {
     public static class CachedObject<T> {
         protected final Cache<T> cache;
         protected final String key;
+        @Getter(AccessLevel.NONE)
         protected final T object;
         protected final long timeAdded;
         protected long lastUsed;
@@ -376,17 +390,40 @@ public class Cache<T> {
         }
 
         /**
-         * Almost the same as {@link #getObject()}
-         * but it also sets a new {@link #lastUsed} time and puts this object on top of cache (resets index).<br>
+         * Returns the object stored in this {@code CachedObject}
+         * but other than {@link #use()} this won't affect functions like
+         * {@link CacheBuilder#indexExpireAfter(int)} or {@link CacheBuilder#temporalExpirationOnlyWhenUnused(boolean)},
+         * because nothing else will be done except of returning the actual object stored in this {@code CachedObject}.
+         *
+         * @return the core object stored by this {@code CachedObject}
+         */
+        public T peek() {
+            return object;
+        }
+
+        /**
+         * Returns the object stored in this {@code CachedObject}.
+         * It also sets a new {@link #lastUsed} time and puts this object on top of cache (resets index).<br>
          * This is necessary for {@link CacheBuilder#indexExpireAfter(int)}
          * and {@link CacheBuilder#temporalExpirationOnlyWhenUnused(boolean)} to work.
          *
-         * @return the core object stored by this cached object
+         * @return the core object stored by this {@code CachedObject}
          */
         public T use() {
+            cache.listeners.forEach(lstnr -> lstnr.onCacheObjectUse(this));
             this.lastUsed = System.currentTimeMillis();
-            cache.cached.addFirst(this);
+            resetIndex();
             return object;
+        }
+
+        protected void resetIndex() {
+            cache.lock.writeLock().lock();
+            try {
+                cache.cached.remove(this);
+                cache.cached.add(this);
+            } finally {
+                cache.lock.writeLock().unlock();
+            }
         }
 
         /**
@@ -515,7 +552,7 @@ public class Cache<T> {
          * @return The {@link Cache} instance you build with this Builder.
          */
         public final Cache<T> build() {
-            Cache<T> cache = new Cache<T>(
+            Cache<T> cache = new Cache<>(
                     expiresAfter,
                     expireTimeUnit,
                     deleteAfterExpiration,
