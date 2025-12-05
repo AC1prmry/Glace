@@ -111,9 +111,9 @@ public class SwingRenderer implements Renderer<BufferedImage> {
 
             frame.setTitle(title);
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.setLocationRelativeTo(null);
             frame.add(swingCanvas);
             frame.pack();
+            frame.setLocationRelativeTo(null);
             frame.setVisible(true);
             frame.validate();
             frame.requestFocus();
@@ -152,9 +152,15 @@ public class SwingRenderer implements Renderer<BufferedImage> {
      */
     @Override
     public void moveWindow(int x, int y) {
-        if (frame == null) return;
 
-        frame.setLocation(x, y);
+        runOnEDT(() -> {
+            if (frame == null) {
+                log.warn("Can't move window, JFrame is null");
+                return;
+            }
+
+            frame.setLocation(x, y);
+        });
     }
 
     /**
@@ -162,9 +168,21 @@ public class SwingRenderer implements Renderer<BufferedImage> {
      */
     @Override
     public void resizeWindow(int width, int height) {
-        if (frame == null) return;
+        runOnEDT(() -> {
+            if (frame == null) {
+                log.warn("Can't resize window, JFrame is null");
+                return;
+            }
 
-        frame.setSize(width, height);
+            swingCanvas.setPreferredSize(new Dimension(width, height));
+            swingCanvas.revalidate();
+
+            frame.pack();
+
+            swingCanvas.createBufferStrategy(getBuffers());
+            bufferStrategy = swingCanvas.getBufferStrategy();
+        });
+
     }
 
     /**
@@ -269,5 +287,13 @@ public class SwingRenderer implements Renderer<BufferedImage> {
     @Override
     public int getWindowHeight() {
         return frame == null ? -1 : frame.getHeight();
+    }
+
+    public static void runOnEDT(Runnable r) {
+        if (SwingUtilities.isEventDispatchThread()) {
+            r.run();
+        } else {
+            SwingUtilities.invokeLater(r);
+        }
     }
 }
