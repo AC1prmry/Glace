@@ -55,10 +55,11 @@ import java.util.stream.Stream;
  *
  * <b>Behavior Notes:</b>
  * <ul>
- *   <li>Calling {@link #get(String)} or {@link CachedObject#use()} resets the index of the object (object is set to most recent position).</li>
- *   <li>Calling {@link CachedObject#peek()} does not affect index or last-used timestamp.</li>
+ *   <li>Calling {@link CachedObject#peek()} to access stored objects doesn't affect the object in any way
+ *   (like index reset or last-used timestamp update).
+ *   This method should only be used for debugging or searching for objects,
+ *   otherwise {@link #get(String)} (Or directly {@link CachedObject#use()}) should be used.</li>
  *   <li>Expired objects may be automatically deleted depending on {@link CacheBuilder#deleteObjectsWhenExpired(boolean)}.</li>
- *   <li>Index-based expiration ensures that only the most recent {@code indexExpireAfter} objects remain active.</li>
  * </ul>
  *
  * @param <T> the type of objects to be stored in the cache
@@ -503,11 +504,8 @@ public class Cache<T> {
          * This is necessary to provide full cache functionality.
          */
         protected static void startTicking() {
-            Loop.builder()
-                    .runOnThread(true)
-                    .threadName("Caching-Thread")
-                    .build()
-                    .start(20, (fps, deltaTime) -> {
+            new Loop(true, "Caching-Thread", null)
+                    .startTickLoop(20, (tps, deltaTime) -> {
                         synchronized (caches) {
                             caches.forEach(Cache::tick);
                         }

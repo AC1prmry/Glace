@@ -3,7 +3,6 @@ package com.snac.graphics.impl;
 import com.snac.graphics.Canvas;
 import com.snac.graphics.Renderer;
 import com.snac.util.Loop;
-import com.snac.util.TryCatch;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -15,11 +14,10 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
 
 /**
+ * TODO: VSync??
  * Implementation of {@link Renderer} based on Swing. See {@link Renderer}-Interface for more information.
  * <p>
  * The easiest way to modify the rendering process is by using {@link #setPreRender(Runnable)}, {@link #setRenderLoopAction(BiConsumer)} or {@link #setPostRender(Runnable)}<br>
@@ -40,13 +38,9 @@ public class SwingRenderer implements Renderer<BufferedImage> {
     protected volatile Canvas<BufferedImage> canvas;
     protected volatile int maxFps;
     protected volatile int fps;
-    protected final ExecutorService executor;
+    protected volatile double deltaTime;
     protected final Loop loop;
     protected SwingBrush brush;
-    @Setter
-    protected Runnable preRender;
-    @Setter
-    protected Runnable postRender;
     @Setter
     protected BiConsumer<Integer, Double> renderLoopAction;
     protected java.awt.Canvas swingCanvas;
@@ -56,7 +50,7 @@ public class SwingRenderer implements Renderer<BufferedImage> {
      * Empty constructor. Creates a new SwingRenderer instance with default values
      */
     public SwingRenderer() {
-        this(-1, null, Executors.newSingleThreadExecutor(), 2);
+        this(-1, null, 2);
     }
 
     /**
@@ -68,22 +62,16 @@ public class SwingRenderer implements Renderer<BufferedImage> {
      *                 By setting this to {@code null} this renderer will use the thread the window is created on for the render-loop,
      *                 which is not recommended as this will block the entire thread.
      */
-    public SwingRenderer(int maxFPS, @Nullable Canvas<BufferedImage> canvas, @Nullable ExecutorService executor, int buffers) {
+    public SwingRenderer(int maxFPS, @Nullable Canvas<BufferedImage> canvas, int buffers) {
         this.canvas = canvas == null ? new Canvas<>() : canvas;
         this.maxFps = maxFPS <= 0 ? 60 : maxFPS;
-        this.executor = executor;
         this.buffers = buffers < 1 ? 2 : buffers;
 
-        this.loop = Loop.builder()
-                .runOnThread(executor == null)
-                .threadName("Swing-Rendering")
-                .build();
+        this.loop = new Loop(true, "Swing-Rendering", null);
 
-        preRender = () -> {
-        };
-        postRender = () -> log.info("Shutting down render loop");
         renderLoopAction = (fps, deltaTime) -> {
             this.fps = fps;
+            this.deltaTime = deltaTime;
             render();
         };
 
@@ -138,13 +126,7 @@ public class SwingRenderer implements Renderer<BufferedImage> {
     }
 
     protected void startRenderLoop() {
-        if (!loop.isRunOnThread()) {
-            executor.execute(() -> {
-                loop.start(preRender, maxFps, renderLoopAction, postRender);
-            });
-        } else {
-            loop.start(preRender, maxFps, renderLoopAction, postRender);
-        }
+        loop.startFrameLoop(maxFps, renderLoopAction);
     }
 
     /**
@@ -221,11 +203,6 @@ public class SwingRenderer implements Renderer<BufferedImage> {
     @Override
     public int getFPS() {
         return fps;
-    }
-
-    @Override
-    public double getDeltaTime() {
-        return loop == null ? 0 : loop.getDeltaTime();
     }
 
     /**

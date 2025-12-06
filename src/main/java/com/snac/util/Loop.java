@@ -1,214 +1,245 @@
 package com.snac.util;
 
-import lombok.Builder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.BiConsumer;
 
 /**
- * This class is used to create (Game-)Loops with a specific tps frequency
+ * Utility class for creating (game-oriented) loops.
+ *
+ * <p>This class provides two loop types, each intended for a different part:</p>
+ *
+ * <ul>
+ *   <li>{@link #startTickLoop(int, BiConsumer)} – a loop intended for game
+ *       logic, physics, and other simulation updates. The provided target rate
+ *       ensures that updates run at a consistent pace, independent of the
+ *       rendering speed.
+ *       See method documentation for an example</li>
+ *
+ *   <li>{@link #startFrameLoop(int, BiConsumer)} – a loop intended for
+ *       rendering or other visually oriented tasks. A target frame rate may be
+ *       used to limit GPU load or synchronize with display refresh rates, but
+ *       the loop does not attempt to maintain strict simulation timing.
+ *       See method documentation for an example</li>
+ * </ul>
+ *
+ * <h3>Why multiple loops?</h3>
+ * <p>
+ * Simulation and rendering have different timing requirements. Simulation must
+ * process every tick to remain deterministic and avoid inconsistent physics,
+ * whereas rendering may freely skip frames because only the latest visual state
+ * matters. Separating the loops ensures stable gameplay timing while still
+ * allowing rendering to run independently and efficiently.
+ * </p><br>
+ * (This doc was written by ChatGPT. I tried it but my english was too bad. Skill issue or something)
  */
-@Getter
+
 @Slf4j
+@Getter
 public class Loop {
-    protected volatile boolean running = false;
-    protected volatile boolean paused = false;
+    private static int loopCount = 1;
+    protected final int id;
+    protected volatile boolean running;
+    protected volatile double alpha;
     protected final boolean runOnThread;
-    protected final String threadName;
-    protected ExecutorService executorService;
-    protected final List<BiConsumer<Integer, Double>> joinedActions;
-    protected final ReentrantReadWriteLock rwLock;
-    protected volatile double deltaTime = 0;
-    protected volatile double alpha = 0;
+    protected final String name;
+    protected final Runnable shutdownHook;
 
     /**
-     * There are two ways to create a new Loop instance:
-     * <p>
-     *  1. Use this contractor
-     * <br>2. Use the builder generated from lombok (thank you lombok <3) For example:
-     * <pre>{@code
-     * var loop = Loop.builder().runOnThread(true).build();
-     * }</pre>
+     * Loop constructor. Does constructor stuff.
      *
-     * @param runOnThread If set to {@code true} this Loop will use its own thread.
-     *                    Otherwise, the thread started on (Not recommended as it will block the entire thread)
-     * @param threadName Sets the name for the generated thread. This only makes sense if runOnThread-parameter is set to {@code true}
+     * @param runOnThread Set to {@code true}, the loop will run on a separate thread.
+     *                    When set to {@code false}, this loop will run on the thread it got started on
+     * @param name The name for this loop. Will also be used as thread name (if this loop runs on a thread (set via {@code runOnThread}))
+     * @param shutdownHook This runnable gets called when the loop stops
      */
-    @Builder
-    protected Loop(boolean runOnThread, @Nullable String threadName) {
+    public Loop(boolean runOnThread, @Nullable String name, @Nullable Runnable shutdownHook) {
+        id = loopCount;
+        this.running = false;
+        this.alpha = 0;
         this.runOnThread = runOnThread;
-        this.threadName = threadName == null ? "" : threadName;
-        this.joinedActions = Collections.synchronizedList(new ArrayList<>());
-        this.rwLock = new ReentrantReadWriteLock();
+        this.name = name == null ? "Loop-" + loopCount : name;
+        this.shutdownHook = shutdownHook == null ? () -> {} : shutdownHook;
+
+        log.info("Creating new loop. Count: '{}'", loopCount);
+        loopCount++;
     }
 
     /**
-     * Shorter version of {@link #start(Runnable, int, BiConsumer, Runnable)}
-     * @param TARGET_TPS The maximum tps this loop should tick. If you're confused or something just type 60 but NEVER 0 or lower
-     * @param action This consumer gets called every tick with the current fps and delta time
-     */
-    public void start(int TARGET_TPS, BiConsumer<Integer, Double> action) {
-        start(() -> {}, TARGET_TPS, action, () -> {});
-    }
-
-    /**
-     * Everything ready? To start the loop, you'll need to call this method.
-     * <p>
-     * Example how to use:
-     * <pre>{@code
-     * var loop = Loop.builder().runOnThread(true).build();
+     * Starts a loop intended for game logic, physics, and other simulation updates.
+     * The provided target rate ensures that updates run at a consistent pace,
+     * independent of the rendering speed.
+     * <br> For rendering use {@link #startFrameLoop(int, BiConsumer)} instead.
      *
-     * loop.start(() -> System.out.println("This gets called before loop"),
-     *          60,
-     *          (currentFPS, deltaTime) -> render(),
-     *          () -> System.out.println("This gets called after loop"));
+     * <p>
+     * Use example:
+     * <pre>{@code
+     * //Creates new loop instance, which runs on a separate thread named "Test-Loop"
+     * var loop = new Loop(true, "Test-Loop", () -> shutdownEverything());
+     *
+     * loop.startTickLoop(20, //Loop repeats itself 20-times a second
+     *         (tps, deltaTime) -> {
+     *             //This block gets called 20-times a second
+     *             System.out.println("Current TPS: " + tps);
+     *             System.out.println("DeltaTime: " + deltaTime);
+     *             //Calculations or something
+     *         });
      * }</pre>
-     * @param preRun This runnable gets called before the loop starts.
-     *               Used to run something on the same thread as this loop.
-     *               IDK if this is useful.
-     * @param TARGET_TPS The maximum tps this loop should tick. If you're confused or something just type 60 but NEVER 0 or lower
-     * @param action This consumer gets called every tick with the current fps and delta time
-     * @param shutdownHook This runnable gets called when this loop stops.
+     *
+     * @param targetTPS Sets the target <b>T</b>icks-<b>P</b>er-<b>S</b>econd (how often this loop (trys to) callback)
+     * @param action The action you want to execute every tick
      */
-    public void start(Runnable preRun, int TARGET_TPS, BiConsumer<Integer, Double> action, Runnable shutdownHook) {
-        if (!running) {
-            running = true;
-        } else {
+    public void startTickLoop(int targetTPS, BiConsumer<Integer, Double> action) {
+        if (running) {
+            log.error("This loop instance is already in use. Maybe a frame loop is running? Stop this loop first!");
             return;
+        } else {
+            running = true;
         }
 
-        if (executorService == null || executorService.isShutdown()) {
-            executorService = Executors.newSingleThreadExecutor(r -> {
-                Thread thread = new Thread(r, threadName);
-                if (!threadName.isBlank()) {
-                    thread.setName(threadName);
+        execute(() -> {
+            final var fixedDelta = 1.0 / targetTPS;
+            var accumulator = 0.0D;
+            var last = System.nanoTime();
+            var secCount = System.currentTimeMillis();
+            var ticksThisSecond = 0;
+            var lastTPS = targetTPS;
+
+            while (running) {
+                var now = System.nanoTime();
+                var frameTime = (now - last) * 1e-9;
+
+                last = now;
+
+                if (frameTime > 0.25) frameTime = 0.25;
+                accumulator += frameTime;
+
+                while (running && accumulator >= fixedDelta) {
+                    ticksThisSecond++;
+                    action.accept(lastTPS, fixedDelta);
+                    accumulator -= fixedDelta;
                 }
-                return thread;
-            });
-        }
+                alpha = accumulator / fixedDelta;
 
-        Runnable runnable = () -> {
-            try {
-                long secCount = System.currentTimeMillis();
-                int tps = TARGET_TPS;
-                int tCount = 0;
-
-                final long TICK_TIME = 1_000_000_000L / TARGET_TPS;
-                long previous = System.nanoTime();
-                long accumulator = 0;
-
-                while (running) {
-
-                    if (paused) {
-                        try {
-                            Thread.sleep(20);
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                            break;
-                        }
-                        continue;
-                    }
-
-                    long now = System.nanoTime();
-                    long frameTime = now - previous;
-                    previous = now;
-
-                    if (frameTime > 250_000_000L) {
-                        frameTime = 250_000_000L;
-                    }
-
-                    accumulator += frameTime;
-
-                    if (System.currentTimeMillis() - secCount >= 1000) {
-                        secCount = System.currentTimeMillis();
-                        tps = tCount;
-                        tCount = 0;
-                    }
-
-                    while (accumulator >= TICK_TIME) {
-                        double dt = TICK_TIME / 1_000_000_000.0;
-                        this.deltaTime = dt;
-
-                        tCount++;
-
-                        action.accept(tps, dt);
-                        synchronized (joinedActions) {
-                            for (var eAction : joinedActions) {
-                                eAction.accept(tps, dt);
-                            }
-                        }
-
-                        accumulator -= TICK_TIME;
-                    }
-
-                    this.alpha = accumulator / (double) TICK_TIME;
-
-                    Thread.sleep(1);
+                if (System.currentTimeMillis() - secCount >= 1000) {
+                    secCount = System.currentTimeMillis();
+                    lastTPS = ticksThisSecond;
+                    ticksThisSecond = 0;
                 }
 
                 try {
-                    shutdownHook.run();
-                } catch (Exception e) {
-                    log.error("Error during shutdown hook", e);
+                    Thread.sleep(1);
+                } catch (InterruptedException ignored) {
                 }
-            } catch (Exception e) {
-                log.error("Error in loop.", e);
-                stop();
             }
-        };
-
-        if (runOnThread) {
-            executorService.execute(preRun);
-            executorService.execute(runnable);
-        } else {
-            preRun.run();
-            runnable.run();
-        }
+        });
     }
 
     /**
-     * This methode joins the loop running on a specific Loop-instance.
-     * The {@link BiConsumer} gets called same as the consumer in the {@link #start(int, BiConsumer) start method}.
-     * @param action This consumer gets called every tick with the current fps and delta time
+     * Starts a loop intended for rendering or other visually oriented tasks.
+     * <p>Take a look at the class docs to see the difference between {@link #startTickLoop(int, BiConsumer)} and this method.</p>
+     *
+     * <p>
+     * Use example:
+     * <pre>{@code
+     * //Creates new loop instance, which runs on a separate thread named "Test-Loop"
+     * var loop = new Loop(true, "Test-Loop", () -> shutdownEverything());
+     *
+     * loop.startFrameLoop(20, //Loop repeats itself 20-times a second
+     *         (fps, deltaTime) -> {
+     *             //This block gets called 20-times a second
+     *             System.out.println("Current FPS: " + fps);
+     *             System.out.println("DeltaTime: " + deltaTime);
+     *             //Rendering or something
+     *         });
+     * }</pre>
+     *
+     * @param targetFPS Sets the target <b>F</b>rames-<b>P</b>er-<b>S</b>econd (how often this loop (trys to) callback)
+     * @param action The action you want to execute every frame
      */
-    public void join(BiConsumer<Integer, Double> action) {
-        joinedActions.add(action);
-        log.info("Action joined");
+    public Loop startFrameLoop(int targetFPS, BiConsumer<Integer, Double> action) {
+        if (running) {
+            log.error("This loop instance is already in use. Maybe a tick loop is running? Stop this loop first!");
+            return this;
+        } else {
+            running = true;
+        }
+
+        execute(() -> {
+            final var frameDuration = 1.0D / targetFPS;
+            var last = System.nanoTime();
+            var secCount = System.currentTimeMillis();
+            var framesThisSecond = 0;
+            var lastFPS = targetFPS;
+
+            while (running) {
+                var now = System.nanoTime();
+                var deltaTime = (now - last) * 1e-9;
+
+                if (deltaTime <= 0) {
+                    last = now;
+                    continue;
+                }
+                last = now;
+
+                framesThisSecond++;
+                alpha = deltaTime / frameDuration;
+                action.accept(lastFPS, deltaTime);
+
+                var target = last + (long) (frameDuration * 1e9);
+
+                while (running && (target - System.nanoTime()) > 2_000_000) {
+                    try {
+                        Thread.sleep(1);
+                    } catch (InterruptedException ignored) {
+                    }
+                }
+
+                while (running && (target - System.nanoTime()) > 0) {
+                    //busy wait
+                }
+
+                if (System.currentTimeMillis() - secCount >= 1000) {
+                    secCount = System.currentTimeMillis();
+                    lastFPS = framesThisSecond;
+                    framesThisSecond = 0;
+                }
+            }
+        });
+        return this;
     }
 
     /**
-     * You can stop the loop at any time with this methode.
-     * To start the loop again,
-     * you have to call {@link #start(Runnable, int, BiConsumer, Runnable)} or {@link #start(int, BiConsumer)}
+     * Stops running loops.
      */
     public void stop() {
-        running = false;
-        if (executorService != null) {
-            executorService.shutdownNow();
+        if (!running) {
+            log.info("Can't stop loop. Loop isn't running!");
+            return;
         }
-
-        log.info("Stopped");
+        running = false;
+        log.info("Stopping loop");
     }
 
     /**
-     * Pauses the loop.
+     * Internal used method to correctly execute loops.
      */
-    public void pause() {
-        paused = true;
-    }
+    protected void execute(Runnable runnable) {
+        Runnable finalRun = () -> {
+            log.info("Executing loop '{}'", name);
+            runnable.run();
+            shutdownHook.run();
+            log.info("Loop '{}' finished", name);
+        };
 
-    /**
-     * Unpauses the loop. This can take up to 20 ms.
-     */
-    public void resume() {
-        paused = false;
+        if (isRunOnThread()) {
+            Executors.newSingleThreadExecutor((r) -> new Thread(r, name))
+                    .execute(finalRun);
+        } else {
+            finalRun.run();
+        }
     }
 }

@@ -11,7 +11,7 @@ import io.github.humbleui.skija.*;
  *  which caused issues with cross-platform compatibility (maybe skill issue)<br>
  *  Consider using the new {@link SwingImageLoader Swing-based image loader} instead.
  */
-@Deprecated
+@Deprecated(forRemoval = true)
 public class SkijaImageLoader extends ImageLoader<Image> {
     private static final Image FALLBACK_IMAGE;
 

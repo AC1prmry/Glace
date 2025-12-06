@@ -10,7 +10,6 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
-import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -33,7 +32,8 @@ public final class Glace {
     @Setter(AccessLevel.NONE)
     private Loop loop;
     @Setter(AccessLevel.NONE)
-    private int currentGameLoopFPS = 0;
+    private int currentGameLoopTPS = 0;
+    @Setter(AccessLevel.NONE)
     private boolean started = false;
     private final LocalDateTime startTime;
     private Set<Runnable> shutdownHooks;
@@ -52,13 +52,10 @@ public final class Glace {
 
         shutdownHooks = Collections.synchronizedSet(new HashSet<>());
 
-        loop = Loop.builder()
-                .runOnThread(true)
-                .threadName("Glace-main")
-                .build();
+        loop = new Loop(true, "Glace-main", () -> shutdownHooks.forEach(Runnable::run));
 
         imageLoader = new SwingImageLoader();
-        renderer = new SwingRenderer(60, null, null, 2);
+        renderer = new SwingRenderer(60, null, 2);
         gameObjectManager = new GameObjectManager<>(renderer);
         animationHandler = new AnimationHandler<>(renderer);
 
@@ -79,15 +76,10 @@ public final class Glace {
     }
 
     private void startGameLoop(int tps) {
-        loop.start(() -> log.info("Starting game loop"), tps,
-                (fps, deltaTime) -> {
-                    tick(deltaTime);
-                    this.currentGameLoopFPS = fps;
-                },
-                () -> {
-                    log.warn("Game loop stopped. On purpose? Bug? Or just skill issue?");
-                    shutdownHooks.forEach(Runnable::run);
-                });
+        loop.startTickLoop(tps, (fps, deltaTime) -> {
+            tick(deltaTime);
+            this.currentGameLoopTPS = fps;
+        });
     }
 
     public long getRuntime(ChronoUnit unit) {

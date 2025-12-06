@@ -25,7 +25,7 @@ import java.awt.Color;
  *  Consider using the new {@link SwingBrush Swing-based brush} instead.
  */
 @Getter
-@Deprecated
+@Deprecated(forRemoval = true)
 public class SkijaBrush implements Brush<Image> {
     private final Canvas skijaCanvas;
     private final long window;

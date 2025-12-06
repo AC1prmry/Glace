@@ -29,7 +29,7 @@ import java.util.function.BiConsumer;
  *  Consider using the new {@link SwingRenderer Swing-based renderer} instead.
  */
 @Getter
-@Deprecated
+@Deprecated(forRemoval = true)
 public class SkijaRenderer implements Renderer {
     private long window = 0;
     private volatile Canvas canvas;
@@ -117,10 +117,7 @@ public class SkijaRenderer implements Renderer {
     }
 
     private void startRenderLoop() {
-        var loop = Loop.builder()
-                .runOnThread(executor == null)
-                .threadName("Glace-Rendering")
-                .build();
+        var loop = new Loop(true, "Glace-Rendering", null);
 
         var initRun = new Runnable() {
             @Override
@@ -173,14 +170,7 @@ public class SkijaRenderer implements Renderer {
             }
         };
 
-        var exec = Executors.newSingleThreadExecutor();
-        if (!loop.isRunOnThread()) {
-            exec.execute(() -> {
-                loop.start(initRun, maxFps, renderRun, shutdownRun);
-            });
-        } else {
-            loop.start(initRun, maxFps, renderRun, shutdownRun);
-        }
+        loop.startFrameLoop(maxFps, renderRun);
     }
 
     private void initSkija() {
