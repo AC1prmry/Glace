@@ -1,11 +1,9 @@
 package com.snac.graphics;
 
 import com.snac.core.gameobject.AbstractObjectBase;
+import com.snac.util.TryCatch;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Stream;
@@ -93,10 +91,45 @@ public class Canvas<I> {
     }
 
     /**
+     * Sometimes it is useful to know on which exact layer a renderable is rendered.
+     * For example, this can help ensure that renderables which depend on each other
+     * are rendered with the correct offset relative to one another,
+     * or when debugging unexpected or incorrect render behavior.
+     * <p>
+     *     This method helps by returning the layer(s) the given renderable
+     *     is currently rendered on.
+     * </p>
+     *
+     * @param renderable The renderable whose render layer(s) should be determined
+     *
+     * @return A set of layers the renderable is rendered on.
+     * Why a set? Because the same renderable instance can be rendered on multiple layers.
+     */
+    public Set<Integer> getLayer(Renderable<?> renderable) {
+        var retu = new HashSet<Integer>();
+        var index = 0;
+
+        rwLock.readLock().lock();
+        try {
+            var it = renderables.iterator();
+            while (it.hasNext()) {
+                var r = it.next();
+                if (r.equals(renderable)) {
+                    retu.add(index);
+                }
+                index++;
+            }
+        } finally {
+            rwLock.readLock().unlock();
+        }
+        return retu;
+    }
+
+    /**
      * Sorts the renderables
      * related to their {@link com.snac.graphics.Renderable.Priority Priority} and {@link Renderable#layer() layer}.
      * Only called when a drawable is added or removed.
-     * <p>IDK what exactly I did here, but it somehow works - at least I think so.</p>
+     * <p>Idk what exactly I did here, but it somehow works - at least I think so.</p>
      */
     protected synchronized void sortRenderables() {
         rwLock.writeLock().lock();

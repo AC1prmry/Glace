@@ -119,8 +119,6 @@ public interface Renderer<I> {
      * <a href="https://de.wikipedia.org/wiki/Interpolation_(Mathematik)">Interpolation (Wikipedia)</a>
      * <p>
      * You can also use {@link com.snac.util.Vector2D#getInterpolatedY(float)}
-     * <br><br>
-     * Wait! Is this recycling?
      * @param lastY The previous Y position (at the last tick)
      * @param newY The current Y position (at the current tick)
      * @param alpha Interpolation factor (0 = lastY, 1 = newY).
@@ -129,6 +127,6 @@ public interface Renderer<I> {
      * @return The interpolated Y position
      */
     static float getInterpolatedY(float lastY, float newY, float alpha) {
-        return getInterpolatedX(lastY, newY, alpha);
+        return getInterpolatedX(lastY, newY, alpha); //Something seems wrong, but don't worry, it works perfectly fine.
     }
 }

@@ -1,6 +1,7 @@
 package com.snac.util;
 
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nullable;
 
@@ -33,10 +34,13 @@ import java.util.function.BiConsumer;
  * whereas rendering may freely skip frames because only the latest visual state
  * matters. Separating the loops ensures stable gameplay timing while still
  * allowing rendering to run independently and efficiently.
- * </p><br>
- * (This doc was written by ChatGPT. I tried it but my english was too bad. Skill issue or something)
+ * <br><br>
+ * Btw due to the two different loops with a different rate your game may seem laggy,
+ * although you configured 60 FPS+ (for render loop).
+ * You can fix this with <strong>interpolation</strong> - just google it ->
+ * This framework provides helper methods for this ({@link com.snac.graphics.Renderer Renderer documentation})
+ * </p>
  */
-
 @Slf4j
 @Getter
 public class Loop {
@@ -44,7 +48,8 @@ public class Loop {
     protected final int id;
     protected volatile boolean running;
     protected volatile double alpha;
-    protected final boolean runOnThread;
+    @Setter
+    protected boolean runOnThread;
     protected final String name;
     protected final Runnable shutdownHook;
 
@@ -81,7 +86,7 @@ public class Loop {
      * var loop = new Loop(true, "Test-Loop", () -> shutdownEverything());
      *
      * loop.startTickLoop(20, //Loop repeats itself 20-times a second
-     *         (tps, deltaTime) -> {
+     *         (tps, fixedDelta) -> {
      *             //This block gets called 20-times a second
      *             System.out.println("Current TPS: " + tps);
      *             System.out.println("DeltaTime: " + deltaTime);

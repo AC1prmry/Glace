@@ -420,7 +420,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
      * from degrees). The {@link #angle} stored in this enum is expressed in degrees.
      * </p>
      *
-     * <b>Note:</b> The entire documentation for this enum was written by JetBrains Junie.
+     * <b>Note:</b> The documentation for this enum was written by JetBrains Junie.
      */
     @Getter
     public enum Direction {

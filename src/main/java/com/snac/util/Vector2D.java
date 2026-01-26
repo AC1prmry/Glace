@@ -143,7 +143,7 @@ public class Vector2D implements Serializable {
     }
 
     /**
-     * Sets the x and y components of this vector. <br>
+     * Sets the x and y components of this vector and prevents too big values via {@link #limitDoubleIntSafe(double)}.<br>
      * This method is for overriding to implement actions on change.
      * @param x new x value
      * @param y new y value
@@ -151,8 +151,23 @@ public class Vector2D implements Serializable {
     public synchronized void set(double x, double y) {
         oldX = this.x;
         oldY = this.y;
-        this.x = x;
-        this.y = y;
+        this.x = limitDoubleIntSafe(x);
+        this.y = limitDoubleIntSafe(y);
+    }
+
+    /**
+     * Clamps the given double value to a range that ensures it can be
+     * safely rounded and converted to an int without causing an
+     * {@link ArithmeticException}.
+     *
+     * @param value the value to clamp
+     * @return a value guaranteed to be safely round-convertible to int
+     */
+    public static double limitDoubleIntSafe(double value) {
+        double minAllowed = (double) Integer.MIN_VALUE - 0.5;
+        double maxAllowed = (double) Integer.MAX_VALUE + 0.5;
+
+        return Math.max(minAllowed, Math.min(maxAllowed, value));
     }
 
     /**

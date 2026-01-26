@@ -3,6 +3,7 @@ package com.snac.core.gameobject;
 import com.snac.util.Vector2D;
 import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
+import sun.misc.Unsafe;
 
 import java.util.List;
 
@@ -17,13 +18,7 @@ public abstract class PhysicalObject<I> extends AbstractObjectBase<I> {
     protected PhysicalObject(@Nullable Vector2D position, float direction, int width, int height) {
         super(position, direction, width, height);
 
-        this.velocity = new Vector2D(0, 0) {
-            @Override
-            public synchronized void set(double x, double y) {
-                onMove(x, y);
-                super.set(x, y);
-            }
-        };
+        this.velocity = new Vector2D(0, 0);
     }
 
     public void onCollide(List<AbstractObjectBase<I>> collidedObjects) {}
@@ -35,8 +30,7 @@ public abstract class PhysicalObject<I> extends AbstractObjectBase<I> {
             var slowFactor = velocity.getX() * 0.3;
             velocity.set(velocity.getX() * -slowFactor, velocity.getY());
         }
-
-        checkCollisions();
+        //checkCollisions();
     }
 
     public void moveCollisionSafe(float direction, float speed) {
@@ -53,7 +47,6 @@ public abstract class PhysicalObject<I> extends AbstractObjectBase<I> {
         onCollide(collisions);
     }
 
-    public void onMove(double newX, double newY) {}
 
     public boolean isOnGround() {
         return false;
