@@ -30,19 +30,15 @@ import java.util.function.BiConsumer;
 @Getter
 @Slf4j
 public class SwingRenderer implements Renderer<BufferedImage> {
-    @Nullable
-    protected JFrame frame;
-    @Nullable
-    protected BufferStrategy bufferStrategy;
-    @Setter
-    protected volatile Canvas<BufferedImage> canvas;
+    @Nullable protected JFrame frame;
+    @Nullable protected BufferStrategy bufferStrategy;
+    @Setter protected volatile Canvas<BufferedImage> canvas;
     protected volatile int maxFps;
     protected volatile int fps;
     protected volatile double deltaTime;
     protected final Loop loop;
     protected SwingBrush brush;
-    @Setter
-    protected BiConsumer<Integer, Double> renderLoopAction;
+    @Setter protected BiConsumer<Integer, Double> renderLoopAction;
     protected java.awt.Canvas swingCanvas;
     protected int buffers;
 
@@ -58,14 +54,12 @@ public class SwingRenderer implements Renderer<BufferedImage> {
      *
      * @param maxFPS   The maximum FPS the renderer should render on
      * @param canvas   Sets the {@link Canvas}. By setting this to {@code null} a new {@link Canvas} will be created
-     * @param executor The executor this renderer should run on.
-     *                 By setting this to {@code null} this renderer will use the thread the window is created on for the render-loop,
-     *                 which is not recommended as this will block the entire thread.
+     * @param buffers  The number of buffers the renderer should use.
      */
     public SwingRenderer(int maxFPS, @Nullable Canvas<BufferedImage> canvas, int buffers) {
         this.canvas = canvas == null ? new Canvas<>() : canvas;
         this.maxFps = maxFPS <= 0 ? 60 : maxFPS;
-        this.buffers = buffers < 1 ? 2 : buffers;
+        this.buffers = Math.max(buffers, 1);
 
         this.loop = new Loop(true, "Swing-Rendering", null);
 
@@ -134,7 +128,6 @@ public class SwingRenderer implements Renderer<BufferedImage> {
      */
     @Override
     public void moveWindow(int x, int y) {
-
         runOnEDT(() -> {
             if (frame == null) {
                 log.warn("Can't move window, JFrame is null");

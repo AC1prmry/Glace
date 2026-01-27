@@ -29,12 +29,9 @@ public final class Glace {
     private GameObjectManager<BufferedImage> gameObjectManager;
     private AnimationHandler<BufferedImage> animationHandler;
 
-    @Setter(AccessLevel.NONE)
-    private Loop loop;
-    @Setter(AccessLevel.NONE)
-    private int currentGameLoopTPS = 0;
-    @Setter(AccessLevel.NONE)
-    private boolean started = false;
+    @Setter(AccessLevel.NONE) private Loop loop;
+    @Setter(AccessLevel.NONE) private int currentGameLoopTPS = 0;
+    @Setter(AccessLevel.NONE) private boolean started = false;
     private final LocalDateTime startTime;
     private Set<Runnable> shutdownHooks;
 
@@ -52,7 +49,7 @@ public final class Glace {
 
         shutdownHooks = Collections.synchronizedSet(new HashSet<>());
 
-        loop = new Loop(true, "Glace-main", () -> shutdownHooks.forEach(Runnable::run));
+        loop = new Loop(true, "Glace", () -> shutdownHooks.forEach(Runnable::run));
 
         imageLoader = new SwingImageLoader();
         renderer = new SwingRenderer(60, null, 2);
@@ -69,7 +66,9 @@ public final class Glace {
         //Register or init annotations and general stuff
     }
 
-    //May throw null pointer if Galce was instantiated but not started
+    /**
+     * May throw {@link NullPointerException NPE} if Glace was instantiated but not {@link #start() started}
+     */
     public void tick(double deltaTime) {
         gameObjectManager.tick(deltaTime);
         animationHandler.tick();
@@ -82,7 +81,7 @@ public final class Glace {
         });
     }
 
-    public long getRuntime(ChronoUnit unit) {
+    public long getTimeRunning(ChronoUnit unit) {
         return unit.between(startTime, LocalDateTime.now());
     }
 }

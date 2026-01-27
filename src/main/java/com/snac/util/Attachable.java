@@ -120,7 +120,7 @@ public abstract class Attachable<T extends Attachable<T>> {
      * up the chain of parents until it finds the root parent (an object that has no parent).
      * </p>
      * This method uses {@link CompletableFuture} to not block your thread.
-     * Because based on how many children there are this method may take a while to find the root parent.
+     * Because based on how many children there are, this method may take a while to find the root parent.
      * (I don't know if this is really necessary lol)
      *
      * @return a {@code CompletableFuture} that completes with the root parent of this object

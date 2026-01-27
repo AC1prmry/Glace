@@ -208,7 +208,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
      */
     protected void onPositionChange(double newX, double newY) {
         if (manager == null) {
-            log.warn("Object manager is null. How is this possible?");
+            log.warn("Object manager is null. Make sure also attached objects are added to a manager.");
             return;
         }
         if (manager.getRenderer().getWindowWidth() <= -1) {
@@ -229,9 +229,6 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
     /**
      * Almost the same as {@link #onPositionChange(double, double)} but this method is invoked <b>after</b> the position changed.<br>
      * Subclasses can override this method to perform custom logic or trigger
-     * <p>
-     * "Is this method really needed?" No I don't think so, but you never know.
-     * </p>
      *
      * @param oldX the X-value before the position got updated
      * @param oldY the Y-value before the position got updated
@@ -335,11 +332,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
      * @param newY new Y-value of this object
      */
     public void updateAttachments(double oldX, double oldY, double newX, double newY) {
-        childAction(child -> {
-            child.position.set(
-                    child.position.getX() - oldX + newX,
-                    child.position.getY() - oldY + newY);
-        });
+        childAction(child -> child.position.add(newX - oldX, newY - oldY));
     }
 
     /**
