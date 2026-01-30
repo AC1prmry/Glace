@@ -1,9 +1,8 @@
-package com.snac.core.gameobject;
+package com.snac.core.object;
 
 import com.snac.util.Vector2D;
 import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
-import sun.misc.Unsafe;
 
 import java.util.List;
 

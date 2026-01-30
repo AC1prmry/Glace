@@ -95,7 +95,7 @@
 <!--                        <manifest>-->
 <!--                            <addClasspath>true</addClasspath>-->
 <!--                            <classpathPrefix>lib/</classpathPrefix>-->
-<!--                            <mainClass>com.snac.playground.Test</mainClass>-->
+<!--                            <mainClass>com.snac.tests.Test</mainClass>-->
 <!--                        </manifest>-->
 <!--                    </archive>-->
 <!--                </configuration>-->

@@ -1,4 +1,4 @@
-package com.snac.core.gameobject;
+package com.snac.core.object;
 
 import com.snac.graphics.Brush;
 import com.snac.graphics.Renderable;
@@ -37,6 +37,7 @@ import java.util.function.Consumer;
  *
  * @param <I> Type of the visual asset associated with this object (e.g., image or sprite handle).
  */
+//TODO: Fix disabled???
 @Slf4j
 @Getter
 public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBase<I>> implements Renderable<I>, Serializable {

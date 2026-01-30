@@ -1,8 +1,5 @@
 package com.snac.graphics;
 
-import com.snac.core.gameobject.AbstractObjectBase;
-import com.snac.util.TryCatch;
-
 import java.util.*;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;

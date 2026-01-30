@@ -2,7 +2,6 @@ package com.snac.util;
 
 import lombok.Getter;
 
-import java.awt.*;
 import java.io.Serializable;
 import java.util.function.Consumer;
 
@@ -24,7 +23,7 @@ import java.util.function.Consumer;
  * }</pre>
  * </p>
  *
- * By taking a look at {@link com.snac.core.gameobject.AbstractObjectBase} you can also see an example of how to use this class.
+ * By taking a look at {@link com.snac.core.object.AbstractObjectBase} you can also see an example of how to use this class.
  */
 @Getter
 public class HitBox extends Attachable<HitBox> implements Serializable {

@@ -1,4 +1,4 @@
-package com.snac.core.gameobject;
+package com.snac.core.object;
 
 import com.snac.graphics.Renderer;
 import com.snac.util.HitBox;

@@ -1,6 +1,6 @@
 package com.snac.core;
 
-import com.snac.core.gameobject.GameObjectManager;
+import com.snac.core.object.GameObjectManager;
 import com.snac.graphics.animation.AnimationHandler;
 import com.snac.graphics.impl.SwingImageLoader;
 import com.snac.graphics.impl.SwingRenderer;

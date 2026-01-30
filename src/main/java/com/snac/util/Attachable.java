@@ -19,7 +19,7 @@ import java.util.function.Consumer;
  * The main idea: you can have one parent and multiple attachments (children). Each
  * {@link Attachable} knows who its parent is (if any) and keeps track of what it has attached.
  * <p>
- * If you need a concrete example, check out {@link com.snac.core.gameobject.AbstractObjectBase}.
+ * If you need a concrete example, check out {@link com.snac.core.object.AbstractObjectBase}.
  * </p>
  *
  * <p>
@@ -90,12 +90,11 @@ public abstract class Attachable<T extends Attachable<T>> {
      * You can use this method to apply specific functionality to every child of an object.
      * In following example, every child (and children of child (grandchildren or something)) gets a position update when the parent is moving:
      * <pre>{@code
-     *      public void onPositionChange() { //Gets called when position of parent changes
-     *         childAction(child -> {
-     *             child.position.set(
-     *                     child.position.getX() - oldX + newX,
-     *                     child.position.getY() - oldY + newY);
-     *         });
+     *      //In this example #onPositionChange gets called when position of parent changes
+     *      public void onPositionChange() {
+     *          childAction(child -> {
+     *              child.position.set(parent.getX(), parent.getY())
+     *          });
      *      }
      * }</pre>
      *
