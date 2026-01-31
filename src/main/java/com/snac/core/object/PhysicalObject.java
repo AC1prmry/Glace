@@ -8,7 +8,7 @@ import java.util.List;
 
 @Getter
 public abstract class PhysicalObject<I> extends AbstractObjectBase<I> {
-    protected final Vector2D velocity;
+    private final Vector2D velocity;
 
     protected PhysicalObject() {
         this(null, Direction.RIGHT.getAngle(), 0, 0);

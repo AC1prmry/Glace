@@ -51,15 +51,16 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
      * Moving the object back within range re-enables updates.
      * </p>
      * <p>
-     * Default value: {@code (screen size / 2) + object width + 200}.
-     * See also {@link #internalCreate(GameObjectManager)} and {@link #onPositionChange(double, double)}.
+     * Default value: {@code screen size + object width + 1000}.
+     * See also {@link #internalCreate(GameObjectManager)} and {@link #onPositionChanged(double, double)}.
      * </p>
      * <p>
      * Setting this to {@code 0} or lower disables the check, meaning the object
      * always gets updated regardless of distance.
      * </p>
      */
-    protected int tickDistance;
+    @Setter
+    private int tickDistance;
 
     /**
      * Similar to {@link #tickDistance}, but only affects rendering.
@@ -72,29 +73,31 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
      * is always rendered regardless of distance.
      * </p>
      */
-    protected int renderDistance;
+    @Setter
+    private int renderDistance;
 
     /**
      * Whether this object is updated or not.
      * If {@code true}, {@link #onUpdate(double)} will no longer be called.
      * <p>
      * See also {@link #tickDistance}, {@link #internalUpdate(double)} and
-     * {@link #onPositionChange(double, double)}.
+     * {@link #onPositionChanged(double, double)}.
      * </p>
      */
-    protected volatile boolean disabled;
+    @Setter
+    private volatile boolean disabled;
 
     /**
      * Whether this object is rendered or not.
      * If {@code false}, it won't be drawn.
      * <p>
      * See also {@link Renderable#visible()}, {@link #renderDistance} and
-     * {@link #onPositionChange(double, double)}.
+     * {@link #onPositionChanged(double, double)}.
      * </p>
      */
     @Setter
     @Getter(AccessLevel.NONE)
-    protected volatile boolean visible;
+    private volatile boolean visible;
 
     /**
      * Position of the object relative to the window the object is rendered on
@@ -103,29 +106,31 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
      * {@link com.snac.core.Glace Glace} configurations)).<br>
      * Never {@code null}; defaults to (0,0) if not provided.
      */
-    protected final Vector2D position;
+    final Vector2D position;
 
     /**
      * Object width in pixels.
      */
-    protected volatile int width;
+    @Setter
+    private volatile int width;
 
     /**
      * Object height in pixels.
      */
-    protected volatile int height;
+    @Setter
+    private volatile int height;
 
     /**
      * Hitbox used for collision or spatial queries,
      * initialized from the rounded position and current size.
      */
-    protected final HitBox hitBox;
+    private final HitBox hitBox;
 
     /**
      * Whether the hitbox is rendered or not.
      * Also see {@link #showHitBox()} and {@link #hideHitBox()}
      */
-    protected boolean showHitBox;
+    private boolean showHitBox;
 
     /**
      * Wall-clock timestamp (milliseconds since epoch) at which this instance was created.
@@ -150,7 +155,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
     /**
      * The direction of the object. Also see {@link Direction}
      */
-    private float direction;
+    private volatile float direction;
 
     /**
      * Manager responsible for the object's lifecycle and orchestration.
@@ -199,15 +204,25 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
     }
 
     /**
-     * Callback method invoked before the position of this object changes.<br>
-     * Used to implement logic for {@link #renderDistance} and {@link #tickDistance}
-     * <p>
+     * Callback method invoked before the position of this object changes.
      * Subclasses can override this method to perform custom logic or trigger
      *
      * @param newX the new X-value the position is set to
      * @param newY the new Y-value the position is set to
      */
-    protected void onPositionChange(double newX, double newY) {
+    protected void onPositionChange(double newX, double newY) {}
+
+    /**
+     * Almost the same as {@link #onPositionChange(double, double)} but this method is invoked <b>after</b> the position changed.<br>
+     * Used to implement logic for {@link #renderDistance} and {@link #tickDistance}
+     * <p>
+     * Subclasses can override this method to perform custom logic or trigger
+     *
+     * @param oldX the X-value before the position got updated
+     * @param oldY the Y-value before the position got updated
+     */
+    protected void onPositionChanged(double oldX, double oldY) {
+        updateAttachments(oldX, oldY, getPosition().getX(), getPosition().getY());
         if (manager == null) {
             log.warn("Object manager is null. Make sure also attached objects are added to a manager.");
             return;
@@ -219,23 +234,14 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
         var distance = Math.max(Math.abs(this.position.getXRound() - renderer.getWindowWidth() / 2),
                 Math.abs(this.position.getYRound() - renderer.getWindowHeight() / 2));
 
-        if (renderDistance > 0) {
-            visible = distance < renderDistance;
-        }
-//        if (tickDistance > 0) {
-//            disabled = distance > tickDistance;
-//        }
-    }
+        System.out.println(distance + "  |  " + getPosition().getX());
 
-    /**
-     * Almost the same as {@link #onPositionChange(double, double)} but this method is invoked <b>after</b> the position changed.<br>
-     * Subclasses can override this method to perform custom logic or trigger
-     *
-     * @param oldX the X-value before the position got updated
-     * @param oldY the Y-value before the position got updated
-     */
-    protected void onPositionChanged(double oldX, double oldY) {
-        updateAttachments(oldX, oldY, getPosition().getX(), getPosition().getY());
+        if (renderDistance > 0) {
+            setVisible(distance < renderDistance);
+        }
+        if (tickDistance > 0) {
+            setDisabled(distance > tickDistance);
+        }
     }
 
     /**
@@ -281,8 +287,8 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
      * One-time initialization hook invoked after the object has been added to a valid {@link GameObjectManager}.
      */
     protected void onCreate() {
-        this.tickDistance = (Toolkit.getDefaultToolkit().getScreenSize().width / 2) + getWidth() + 600;
-        this.renderDistance = tickDistance;
+        setTickDistance(Toolkit.getDefaultToolkit().getScreenSize().width + getWidth() + 1000);
+        setRenderDistance(getTickDistance());
     }
 
     /**
@@ -319,7 +325,6 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
      */
     public HitBox getHitBox() {
         hitBox.setBounds(getPosition().getXRound(), getPosition().getYRound(), getWidth(), getHeight());
-
         return hitBox;
     }
 
