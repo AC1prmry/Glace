@@ -2,11 +2,13 @@ package com.snac.core.object;
 
 import com.snac.graphics.Renderer;
 import com.snac.util.HitBox;
+import com.snac.util.TryCatch;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Stream;
 
@@ -28,13 +30,14 @@ import java.util.stream.Stream;
  */
 @Slf4j
 public class GameObjectManager<I> {
-
     private static long IDs = 0;
 
     /**
      * This {@link Set} contains all game objects managed by this manager.
      */
     protected final Set<AbstractObjectBase<I>> gameObjects;
+
+    protected final Set<AbstractObjectBase<I>> gameObjectsSnapshot;
 
     /**
      * A {@link HitBox} used to find game objects at a given position.
@@ -47,11 +50,14 @@ public class GameObjectManager<I> {
      */
     protected final ReentrantReadWriteLock rwLock;
 
+    protected final ReentrantReadWriteLock rwLockSnapshot;
+
     /**
      * The {@link Renderer} used to render the game objects.
      */
     @Getter
     protected final Renderer<I> renderer;
+
 
     /**
      * Create a new {@link GameObjectManager} instance.
@@ -60,11 +66,23 @@ public class GameObjectManager<I> {
      */
     public GameObjectManager(Renderer<I> renderer) {
         this.gameObjects = Collections.synchronizedSet(new HashSet<>());
+        this.gameObjectsSnapshot = new HashSet<>(gameObjects);
         this.rwLock = new ReentrantReadWriteLock();
+        this.rwLockSnapshot = new ReentrantReadWriteLock();
         this.renderer = renderer;
         this.posFinderHitBox = new HitBox(0, 0, 1, 1);
 
         log.info("Initialized");
+    }
+
+    public void onObjectsUpdate() {
+        rwLockSnapshot.writeLock().lock();
+        try {
+            gameObjectsSnapshot.clear();
+            gameObjectsSnapshot.addAll(gameObjects);
+        } finally {
+            rwLockSnapshot.writeLock().unlock();
+        }
     }
 
     /**
@@ -74,13 +92,15 @@ public class GameObjectManager<I> {
      * @return this manager instance, for chaining
      */
     public GameObjectManager<?> addGameObject(AbstractObjectBase<I> gameObject) {
-        gameObjects.add(gameObject);
-        gameObject.internalCreate(this);
-        renderer.getCanvas().addRenderable(gameObject);
+        if (gameObjects.add(gameObject)) {
+            gameObject.internalCreate(this);
+            renderer.getCanvas().addRenderable(gameObject);
 
-        log.info("Added new GameObject of type '{}' with ID '{}'",
-                gameObject.getClass().getSimpleName(),
-                gameObject.getId());
+            log.info("Added new GameObject of type '{}' with ID '{}'",
+                    gameObject.getClass().getSimpleName(),
+                    gameObject.getId());
+            onObjectsUpdate();
+        }
 
         return this;
     }
@@ -107,13 +127,15 @@ public class GameObjectManager<I> {
      * @return this manager instance, for chaining
      */
     public GameObjectManager<?> destroyGameObject(AbstractObjectBase<I> gameObject) {
-        gameObjects.remove(gameObject);
-        gameObject.onDestroy();
-        renderer.getCanvas().removeRenderable(gameObject);
+        if (gameObjects.remove(gameObject)) {
+            gameObject.onDestroy();
+            renderer.getCanvas().removeRenderable(gameObject);
 
-        log.info("Removed GameObject of type '{}' with ID '{}'",
-                gameObject.getClass().getSimpleName(),
-                gameObject.getId());
+            log.info("Removed GameObject of type '{}' with ID '{}'",
+                    gameObject.getClass().getSimpleName(),
+                    gameObject.getId());
+            onObjectsUpdate();
+        }
 
         return this;
     }
@@ -124,7 +146,7 @@ public class GameObjectManager<I> {
      *
      * @param deltaTime the time passed since the last update
      */
-    public synchronized void tick(double deltaTime) {
+    public void tick(double deltaTime) {
         rwLock.readLock().lock();
         try {
             gameObjects.forEach(gO -> gO.internalUpdate(deltaTime));
@@ -135,19 +157,37 @@ public class GameObjectManager<I> {
 
     /**
      * Get all game objects at a given position.
+     * <p>
+     *     Attached hitboxes gets checked. For example if you did something like
+     * </p>
      *
      * @param x The x coordinate
      * @param y The y coordinate
      * @return A list of game objects at the given position
      */
-    public synchronized List<AbstractObjectBase<I>> getObjectsAt(int x, int y) {
-        posFinderHitBox.setPosition(x, y);
+    public List<AbstractObjectBase<I>> getObjectsAt(int x, int y) {
+        synchronized (posFinderHitBox) {
+            posFinderHitBox.setPosition(x, y);
+        }
 
         rwLock.readLock().lock();
         try {
             return gameObjects
                     .stream()
-                    .filter(entity -> entity.getHitBox().intersects(posFinderHitBox))
+                    .filter(entity -> {
+                        var intersection = new AtomicBoolean(false);
+
+                        //Check if parent hitbox intersects
+                        if (entity.getHitBox().intersects(posFinderHitBox)) return true;
+
+                        //Check if any child hitbox intersects
+                        entity.getHitBox().childAction(child -> {
+                            if (child.intersects(posFinderHitBox)) {
+                                intersection.set(true);
+                            }
+                        });
+                        return intersection.get();
+                    })
                     .toList();
         } finally {
             rwLock.readLock().unlock();
@@ -232,14 +272,7 @@ public class GameObjectManager<I> {
      * @return {@code true} if the game object collides with any other game object, otherwise {@code false}
      */
     public boolean collides(AbstractObjectBase<?> gameObject) {
-        rwLock.readLock().lock();
-        try {
-            return gameObjects
-                    .stream()
-                    .anyMatch(gO -> gO.getHitBox().intersects(gameObject.getHitBox()));
-        } finally {
-            rwLock.readLock().unlock();
-        }
+        return !getCollisions(gameObject).isEmpty();
     }
 
     /**
@@ -249,14 +282,11 @@ public class GameObjectManager<I> {
      * @return List of all game objects that collide with the given game object
      */
     public List<AbstractObjectBase<I>> getCollisions(AbstractObjectBase<?> gameObject) {
-        if (!collides(gameObject)) {
-            return Collections.emptyList();
-        }
-
         rwLock.readLock().lock();
         try {
             return gameObjects
                     .stream()
+                    .filter(gO -> !gO.isDisabled())
                     .filter(gO -> gO.getHitBox().intersects(gameObject.getHitBox()))
                     .toList();
         } finally {
@@ -272,10 +302,15 @@ public class GameObjectManager<I> {
      * @return A list of all game objects managed by this manager
      */
     public List<AbstractObjectBase<?>> getGameObjects() {
-        return List.copyOf(gameObjects);
+        rwLock.readLock().lock();
+        try {
+            return List.copyOf(gameObjects);
+        } finally {
+            rwLock.readLock().unlock();
+        }
     }
 
-    public static long getNextID() {
+    public static synchronized long getNextID() {
         return IDs++;
     }
 }

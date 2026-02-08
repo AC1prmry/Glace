@@ -4,6 +4,7 @@ import com.snac.graphics.Renderer;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -27,6 +28,9 @@ import java.io.Serializable;
 @Getter
 @Slf4j
 public class Vector2D implements Serializable {
+    @Serial
+    private static final long serialVersionUID = 1L;
+
     private volatile double x;
     private volatile double y;
     private volatile double oldX;

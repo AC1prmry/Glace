@@ -1,14 +1,21 @@
 package com.snac.core.object;
 
+import com.snac.util.HitBox;
 import com.snac.util.Vector2D;
 import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.Serial;
 import java.util.List;
 
+//Implement Swept AABB Collision detection
 @Getter
 public abstract class PhysicalObject<I> extends AbstractObjectBase<I> {
+    @Serial
+    private static final long serialVersionUID = 1L;
+
     private final Vector2D velocity;
+    private final HitBox collisionFinderBox;
 
     protected PhysicalObject() {
         this(null, Direction.RIGHT.getAngle(), 0, 0);
@@ -18,6 +25,7 @@ public abstract class PhysicalObject<I> extends AbstractObjectBase<I> {
         super(position, direction, width, height);
 
         this.velocity = new Vector2D(0, 0);
+        this.collisionFinderBox = new HitBox(getPosition().getXRound(), getPosition().getYRound(), width, height);
     }
 
     public void onCollide(List<AbstractObjectBase<I>> collidedObjects) {}
@@ -46,6 +54,14 @@ public abstract class PhysicalObject<I> extends AbstractObjectBase<I> {
         onCollide(collisions);
     }
 
+
+    public AbstractObjectBase<I> getSweptCollisionX(PhysicalObject<I> obj, float speed) {
+
+    }
+
+    public AbstractObjectBase<I> getSweptCollisionY(Vector2D startPos, float speed) {
+
+    }
 
     public boolean isOnGround() {
         return false;

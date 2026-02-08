@@ -2,6 +2,7 @@ package com.snac.util;
 
 import lombok.Getter;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.function.Consumer;
 
@@ -27,6 +28,9 @@ import java.util.function.Consumer;
  */
 @Getter
 public class HitBox extends Attachable<HitBox> implements Serializable {
+    @Serial
+    private static final long serialVersionUID = 1L;
+
     private int x;
     private int y;
     private int width;

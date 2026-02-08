@@ -1,6 +1,9 @@
 package com.snac.graphics;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Stream;
@@ -100,10 +103,10 @@ public class Canvas<I> {
      * @param renderable The renderable whose render layer(s) should be determined
      *
      * @return A set of layers the renderable is rendered on.
-     * Why a set? Because the same renderable instance can be rendered on multiple layers.
+     * Why {@link List}? Because the same renderable instance can be rendered on multiple layers.
      */
-    public Set<Integer> getLayer(Renderable<?> renderable) {
-        var retu = new HashSet<Integer>();
+    public List<Integer> getLayer(Renderable<?> renderable) {
+        var retu = new ArrayList<Integer>();
         var index = 0;
 
         rwLock.readLock().lock();

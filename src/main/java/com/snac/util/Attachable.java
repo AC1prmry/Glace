@@ -4,7 +4,11 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.io.Serial;
+import java.io.Serializable;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
@@ -33,7 +37,10 @@ import java.util.function.Consumer;
 @Slf4j
 @Getter
 @SuppressWarnings("unchecked")
-public abstract class Attachable<T extends Attachable<T>> {
+public abstract class Attachable<T extends Attachable<T>> implements Serializable {
+    @Serial
+    private static final long serialVersionUID = 1L;
+
     /**
      * The parent of this {@link Attachable}. May be null if no parent exists.
      */

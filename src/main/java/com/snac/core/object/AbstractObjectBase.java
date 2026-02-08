@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nullable;
 
 import java.awt.*;
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.function.Consumer;
@@ -37,10 +38,11 @@ import java.util.function.Consumer;
  *
  * @param <I> Type of the visual asset associated with this object (e.g., image or sprite handle).
  */
-//TODO: Fix disabled???
 @Slf4j
 @Getter
 public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBase<I>> implements Renderable<I>, Serializable {
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     /**
      * Maximum distance from the center of the window (created by the

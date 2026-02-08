@@ -1,6 +1,6 @@
 package com.snac.graphics;
 
-import java.util.Set;
+import java.util.List;
 
 /**
  * This interface is for everything that needs to be drawn to the screen.
@@ -73,7 +73,7 @@ public interface Renderable<I> {
      * @param canvas the canvas this renderable is rendered on
      * @return the layer(s) this renderable is rendered on
      */
-    default Set<Integer> getLayerAtRuntime(Canvas<?> canvas) {
+    default List<Integer> getLayersAtRuntime(Canvas<?> canvas) {
         return canvas.getLayer(this);
     }
 
