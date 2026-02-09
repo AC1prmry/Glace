@@ -420,6 +420,9 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
         super.addAttachment(attachable);
     }
 
+    /**
+     * @return unique and readable name for this object. Can be used for debugging or related purposes.
+     */
     public String getName() {
         return getClass().getSimpleName() + "(" + getId() + ")";
     }
