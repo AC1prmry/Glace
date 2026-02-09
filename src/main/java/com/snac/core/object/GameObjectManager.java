@@ -96,9 +96,7 @@ public class GameObjectManager<I> {
             gameObject.internalCreate(this);
             renderer.getCanvas().addRenderable(gameObject);
 
-            log.info("Added new GameObject of type '{}' with ID '{}'",
-                    gameObject.getClass().getSimpleName(),
-                    gameObject.getId());
+            log.info("Added GameObject {}", gameObject.getName());
             onObjectsUpdate();
         }
 
@@ -128,12 +126,17 @@ public class GameObjectManager<I> {
      */
     public GameObjectManager<?> destroyGameObject(AbstractObjectBase<I> gameObject) {
         if (gameObjects.remove(gameObject)) {
+            var parent = gameObject.getParent();
+            if (parent != null) {
+                parent.removeAttachment(gameObject);
+                log.info("Removed attachable '{}' from parent '{}' because this attachable was removed from its manager" +
+                        " - Objects without a manager aren't allowed to be attached to other object!",
+                        gameObject.getName(), parent.getName());
+            }
             gameObject.onDestroy();
             renderer.getCanvas().removeRenderable(gameObject);
 
-            log.info("Removed GameObject of type '{}' with ID '{}'",
-                    gameObject.getClass().getSimpleName(),
-                    gameObject.getId());
+            log.info("Removed GameObject {}", gameObject.getName());
             onObjectsUpdate();
         }
 

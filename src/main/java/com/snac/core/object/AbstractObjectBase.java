@@ -161,7 +161,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
 
     /**
      * Manager responsible for the object's lifecycle and orchestration.
-     * May be {@code null} this object gets initialized with a {@link GameObjectManager}
+     * May be {@code null} if this object wasn't correctly initialized by adding to a valid {@link GameObjectManager}
      */
     @Nullable
     private GameObjectManager<I> manager;
@@ -350,7 +350,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
     public void showHitBox() {
         if (!showHitBox) {
             showHitBox = true;
-            log.info("Showing hit box of object {}", getId());
+            log.info("Showing hit box of object {}", getName());
         }
     }
 
@@ -361,7 +361,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
     public void hideHitBox() {
         if (showHitBox) {
             showHitBox = false;
-            log.info("Hiding hit box of object {}", getId());
+            log.info("Hiding hit box of object {}", getName());
         }
     }
 
@@ -400,6 +400,28 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
     @Nullable
     public Direction getDirection() {
         return Direction.getDirection(this.direction);
+    }
+
+    /**
+     * Overwritten from {@link Attachable} to prevent objects which weren't added to {@link GameObjectManager} from being attached.
+     * <br>
+     * To provide correct functionality for these attached objects. Otherwise, some concepts like collision detection won't work.
+     * <p>
+     *     See {@link Attachable#addAttachment(Attachable)} for more information.
+     * </p>
+     */
+    @Override
+    public void addAttachment(AbstractObjectBase<I> attachable) {
+        if (attachable.getManager() == null) {
+            log.warn("Couldn't attach object {} because it isn't initialized correctly." +
+                    " It must be added to a object manager first.", getName());
+            return;
+        }
+        super.addAttachment(attachable);
+    }
+
+    public String getName() {
+        return getClass().getSimpleName() + "(" + getId() + ")";
     }
 
     /**
