@@ -16,6 +16,7 @@ import java.awt.*;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 /**
@@ -25,14 +26,14 @@ import java.util.function.Consumer;
  *
  * <p><strong>Note</strong></p>
  * <ul>
- *   <li>{@link #internalCreate(GameObjectManager)} is invoked by the framework to register the object and then call {@link #onCreate()}.</li>
+ *   <li>{@link #internalCreate(ObjectManager)} is invoked by the framework to register the object and then call {@link #onCreate()}.</li>
  *   <li>{@link #internalUpdate(double)} is invoked by the framework every tick and delegates to {@link #onUpdate(double)}.</li>
  * </ul>
  * <p>
- * To provide functionality for your game objects, you need to add them to a valid {@link GameObjectManager} instance.
+ * To provide functionality for your game objects, you need to add them to a valid {@link ObjectManager} instance.
  *
  * <p>
- * <b>Note:</b> By removing unused objects via {@link GameObjectManager#destroyGameObject(AbstractObjectBase)} you can save resources.
+ * <b>Note:</b> By removing unused objects via {@link ObjectManager#destroyGameObject(AbstractObjectBase)} you can save resources.
  * To implement such features you can use a cache (like {@link com.snac.data.runtime.caching.Cache Cache} with {@link com.snac.data.runtime.caching.CacheListener CacheListener} for custom functionality)
  * </p>
  *
@@ -54,7 +55,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
      * </p>
      * <p>
      * Default value: {@code screen size + object width + 1000}.
-     * See also {@link #internalCreate(GameObjectManager)} and {@link #onPositionChanged(double, double)}.
+     * See also {@link #internalCreate(ObjectManager)} and {@link #onPositionChanged(double, double)}.
      * </p>
      * <p>
      * Setting this to {@code 0} or lower disables the check, meaning the object
@@ -160,11 +161,11 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
     private volatile float direction;
 
     /**
-     * Manager responsible for the object's lifecycle and orchestration.
-     * May be {@code null} this object gets initialized with a {@link GameObjectManager}
+     * Manager responsible for the object's lifecycle and orchestration.<p>
+     * May be {@code null} if this object wasn't added to {@link ObjectManager} via {@link ObjectManager#addGameObject(AbstractObjectBase)}
      */
     @Nullable
-    private GameObjectManager<I> manager;
+    private ObjectManager<I> manager;
 
     /**
      * Creates an object with a default position (0|0), default direction {@link Direction#RIGHT},
@@ -202,7 +203,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
         this.height = height < 1 ? 20 : height;
         this.hitBox = new HitBox(this.position.getXRound(), this.position.getYRound(), getWidth(), getHeight());
         this.timeCreated = System.currentTimeMillis();
-        this.id = GameObjectManager.getNextID();
+        this.id = ObjectManager.getNextID();
     }
 
     /**
@@ -286,7 +287,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
     protected abstract void onUpdate(double deltaTime);
 
     /**
-     * One-time initialization hook invoked after the object has been added to a valid {@link GameObjectManager}.
+     * One-time initialization hook invoked after the object has been added to a valid {@link ObjectManager}.
      */
     protected void onCreate() {
         setTickDistance(Toolkit.getDefaultToolkit().getScreenSize().width + getWidth() + 1000);
@@ -313,10 +314,10 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
      * Framework-internal creation entry point; sets the manager and calls {@link #onCreate()}.
      * Not intended to be called directly by subclasses.
      *
-     * @param gameObjectManager the manager responsible for this object
+     * @param objectManager the manager responsible for this object
      */
-    void internalCreate(GameObjectManager<I> gameObjectManager) {
-        this.manager = gameObjectManager;
+    void internalCreate(ObjectManager<I> objectManager) {
+        this.manager = objectManager;
         this.onCreate();
     }
 
@@ -393,12 +394,10 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
 
     /**
      * Get the current direction as {@link Direction direction enum-value}
-     * @return the current direction as {@link Direction direction enum-value}
-     * or
-     * {@code null} if the current direction angle isn't a valid {@link Direction direction enum-value}
+     * @return an {@link Optional} with a {@link Direction direction enum-value}
+     * or empty if the current direction angle isn't a valid {@link Direction}
      */
-    @Nullable
-    public Direction getDirection() {
+    public Optional<Direction> getDirection() {
         return Direction.getDirection(this.direction);
     }
 
@@ -478,14 +477,12 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
          * </p>
          *
          * @param angle an angle in degrees
-         * @return the matching {@code Direction}, or {@code null} if none matches exactly
+         * @return an {@link Optional} with the matching {@code Direction}, or empty if none matches exactly
          */
-        @Nullable
-        public static Direction getDirection(float angle) {
+        public static Optional<Direction> getDirection(float angle) {
             return Arrays.stream(Direction.values())
                     .filter(direction -> direction.angle == angle)
-                    .findFirst()
-                    .orElse(null);
+                    .findFirst();
         }
     }
 }

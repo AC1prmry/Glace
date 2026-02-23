@@ -24,6 +24,7 @@ import java.io.Serializable;
  * Note: This class implements {@link Serializable}, allowing instances to be serialized. <br>
  * Docs written by ChatGPT btw. Sorry, I was just too lazy...
  * </p>
+ * TODO: Completely switch to double
  */
 @Getter
 @Slf4j
@@ -159,6 +160,7 @@ public class Vector2D implements Serializable {
         this.y = limitDoubleIntSafe(y);
     }
 
+    //TODO: Only limit when needed (getRoundX)
     /**
      * Clamps the given double value to a range that ensures it can be
      * safely rounded and converted to an int without causing an
@@ -275,6 +277,7 @@ public class Vector2D implements Serializable {
         return Math.toIntExact(Math.round(y));
     }
 
+    //TODO: Float or Double? Why mixed?
     /**
      * Returns interpolated X-value. Used for smooth rendering (Should be used as X-value in your render methods).<br>
      *

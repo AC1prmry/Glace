@@ -74,10 +74,9 @@ public abstract class ImageLoader<I> {
      * @return The cached or provided image
      */
     public I getCachedOrLoad(I image, String name) {
-        if (cache.contains(name)) {
-            return cache.get(name);
-        }
-        return cache(image, name);
+        return cache
+                .get(name)
+                .orElse(cache(image, name));
     }
 
     /**
@@ -89,10 +88,9 @@ public abstract class ImageLoader<I> {
      * @return The cached or newly loaded image instance
      */
     public I getCachedOrLoad(String path, String name) {
-        if (cache.contains(name)) {
-            return cache.get(name);
-        }
-        return cache(load(path), name);
+        return cache
+                .get(name)
+                .orElse(cache(load(path), name));
     }
 
     /**
@@ -103,10 +101,7 @@ public abstract class ImageLoader<I> {
      * @return The cached image or the fallback image
      */
     public I getCached(String name) {
-        if (cache.contains(name)) {
-            return cache.get(name);
-        }
-        return getFallback();
+        return cache.get(name).orElse(getFallback());
     }
 
     /**

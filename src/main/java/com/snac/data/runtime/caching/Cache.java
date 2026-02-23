@@ -5,7 +5,6 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -205,17 +204,15 @@ public class Cache<T> {
      * Get a cached object from its key.
      *
      * @param key The key of the object
-     * @return {@code null} if this key/object doesn't exist, otherwise the object of the key
+     * @return an {@link Optional} containing the value of this key if, or nothing if this key doesn't exist
      */
-    @Nullable
-    public T get(String key) {
+    public Optional<T> get(String key) {
         lock.readLock().lock();
         try {
             return cached.stream()
                     .filter(obj -> obj.getKey().equals(key))
                     .findFirst()
-                    .map(CachedObject::use)
-                    .orElse(null);
+                    .map(CachedObject::use);
 
         } finally {
             lock.readLock().unlock();
@@ -227,16 +224,14 @@ public class Cache<T> {
      * The objects index or last-used-time won't be affected.
      *
      * @param object The object you want to know the key from
-     * @return {@code null} if this object doesn't exist, otherwise the key of the object
+     * @return an {@link Optional} with the key of the object, or nothing if this object doesn't exist
      */
-    @Nullable
-    public String getKey(T object) {
+    public Optional<String> getKey(T object) {
         lock.readLock().lock();
         try {
             return cached.stream().filter(obj -> obj.peek().equals(object))
                     .map(CachedObject::getKey)
-                    .findFirst()
-                    .orElse(null);
+                    .findFirst();
         } finally {
             lock.readLock().unlock();
         }
@@ -249,7 +244,7 @@ public class Cache<T> {
      * @return {@code true} if the object is in the cache, otherwise {@code false}
      */
     public boolean contains(T object) {
-        return getKey(object) != null;
+        return getKey(object).isPresent();
     }
 
     /**
@@ -259,7 +254,7 @@ public class Cache<T> {
      * @return {@code true} if the key is in the cache, otherwise {@code false}
      */
     public boolean contains(String key) {
-        return get(key) != null;
+        return get(key).isPresent();
     }
 
     /**
@@ -438,7 +433,7 @@ public class Cache<T> {
          * @return the core object stored by this {@code CachedObject}
          */
         public T use() {
-            cache.listeners.forEach(lstnr -> lstnr.onCacheObjectUse(this));
+            cache.listeners.forEach(lstnr -> lstnr.onCachedObjectUse(this));
             this.lastUsed = System.currentTimeMillis();
             resetIndex();
             return object;

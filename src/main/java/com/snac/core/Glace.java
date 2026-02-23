@@ -1,6 +1,6 @@
 package com.snac.core;
 
-import com.snac.core.object.GameObjectManager;
+import com.snac.core.object.ObjectManager;
 import com.snac.graphics.animation.AnimationHandler;
 import com.snac.graphics.impl.SwingImageLoader;
 import com.snac.graphics.impl.SwingRenderer;
@@ -26,7 +26,7 @@ public final class Glace {
 
     private SwingImageLoader imageLoader;
     private SwingRenderer renderer;
-    private GameObjectManager<BufferedImage> gameObjectManager;
+    private ObjectManager<BufferedImage> objectManager;
     private AnimationHandler<BufferedImage> animationHandler;
 
     @Setter(AccessLevel.NONE) private Loop loop;
@@ -53,7 +53,7 @@ public final class Glace {
 
         imageLoader = new SwingImageLoader();
         renderer = new SwingRenderer(60, null, 2);
-        gameObjectManager = new GameObjectManager<>(renderer);
+        objectManager = new ObjectManager<>(renderer);
         animationHandler = new AnimationHandler<>(renderer);
 
         log.info("Initialized");
@@ -70,7 +70,7 @@ public final class Glace {
      * May throw {@link NullPointerException NPE} if Glace was instantiated but not {@link #start() started}
      */
     public void tick(double deltaTime) {
-        gameObjectManager.tick(deltaTime);
+        objectManager.tick(deltaTime);
         animationHandler.tick();
     }
 

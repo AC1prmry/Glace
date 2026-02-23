@@ -58,6 +58,6 @@ public interface CacheListener {
      *
      * @param object the object which is about to be fetched
      */
-    void onCacheObjectUse(Cache.CachedObject<?> object);
+    void onCachedObjectUse(Cache.CachedObject<?> object);
 }
 

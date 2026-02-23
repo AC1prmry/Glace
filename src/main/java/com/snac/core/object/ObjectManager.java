@@ -1,19 +1,15 @@
 package com.snac.core.object;
 
 import com.snac.graphics.Renderer;
-import com.snac.util.HitBox;
-import com.snac.util.TryCatch;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Stream;
 
 /**
- * Class to manage game objects.
+ * Class to manage {@link AbstractObjectBase objects}.
  * For a proper use of this framework you should add your {@link AbstractObjectBase game objects} to a valid instance of this class.
  * This class is thread safe (at least I hope so) and does all the work related to game objects for you.
  *
@@ -29,7 +25,7 @@ import java.util.stream.Stream;
  * @param <I> Type of the visual asset associated with this object (e.g., image or sprite handle).
  */
 @Slf4j
-public class GameObjectManager<I> {
+public class ObjectManager<I> {
     private static long IDs = 0;
 
     /**
@@ -37,20 +33,10 @@ public class GameObjectManager<I> {
      */
     protected final Set<AbstractObjectBase<I>> gameObjects;
 
-    protected final Set<AbstractObjectBase<I>> gameObjectsSnapshot;
-
-    /**
-     * A {@link HitBox} used to find game objects at a given position.
-     * By creating only one instance of this class, we can reuse it for all game objects.
-     */
-    protected final HitBox posFinderHitBox;
-
     /**
      * The {@link ReentrantReadWriteLock} used to synchronize access to the {@link #gameObjects}.
      */
     protected final ReentrantReadWriteLock rwLock;
-
-    protected final ReentrantReadWriteLock rwLockSnapshot;
 
     /**
      * The {@link Renderer} used to render the game objects.
@@ -60,29 +46,16 @@ public class GameObjectManager<I> {
 
 
     /**
-     * Create a new {@link GameObjectManager} instance.
+     * Create a new {@link ObjectManager} instance.
      *
      * @param renderer The {@link Renderer} used to render the game objects.
      */
-    public GameObjectManager(Renderer<I> renderer) {
+    public ObjectManager(Renderer<I> renderer) {
         this.gameObjects = Collections.synchronizedSet(new HashSet<>());
-        this.gameObjectsSnapshot = new HashSet<>(gameObjects);
         this.rwLock = new ReentrantReadWriteLock();
-        this.rwLockSnapshot = new ReentrantReadWriteLock();
         this.renderer = renderer;
-        this.posFinderHitBox = new HitBox(0, 0, 1, 1);
 
         log.info("Initialized");
-    }
-
-    public void onObjectsUpdate() {
-        rwLockSnapshot.writeLock().lock();
-        try {
-            gameObjectsSnapshot.clear();
-            gameObjectsSnapshot.addAll(gameObjects);
-        } finally {
-            rwLockSnapshot.writeLock().unlock();
-        }
     }
 
     /**
@@ -91,7 +64,7 @@ public class GameObjectManager<I> {
      * @param gameObject the game object to add
      * @return this manager instance, for chaining
      */
-    public GameObjectManager<?> addGameObject(AbstractObjectBase<I> gameObject) {
+    public ObjectManager<?> addGameObject(AbstractObjectBase<I> gameObject) {
         if (gameObjects.add(gameObject)) {
             gameObject.internalCreate(this);
             renderer.getCanvas().addRenderable(gameObject);
@@ -99,7 +72,6 @@ public class GameObjectManager<I> {
             log.info("Added new GameObject of type '{}' with ID '{}'",
                     gameObject.getClass().getSimpleName(),
                     gameObject.getId());
-            onObjectsUpdate();
         }
 
         return this;
@@ -112,7 +84,7 @@ public class GameObjectManager<I> {
      * @param id the id of the object you want to destroy
      * @return this manager instance, for chaining
      */
-    public GameObjectManager<?> destroyGameObject(long id) {
+    public ObjectManager<?> destroyGameObject(long id) {
         var gameObject = getGameObjectFromID(id);
         if (gameObject != null) {
             destroyGameObject(gameObject);
@@ -126,7 +98,7 @@ public class GameObjectManager<I> {
      * @param gameObject the game object to destroy
      * @return this manager instance, for chaining
      */
-    public GameObjectManager<?> destroyGameObject(AbstractObjectBase<I> gameObject) {
+    public ObjectManager<?> destroyGameObject(AbstractObjectBase<I> gameObject) {
         if (gameObjects.remove(gameObject)) {
             gameObject.onDestroy();
             renderer.getCanvas().removeRenderable(gameObject);
@@ -134,7 +106,6 @@ public class GameObjectManager<I> {
             log.info("Removed GameObject of type '{}' with ID '{}'",
                     gameObject.getClass().getSimpleName(),
                     gameObject.getId());
-            onObjectsUpdate();
         }
 
         return this;
@@ -156,42 +127,46 @@ public class GameObjectManager<I> {
     }
 
     /**
-     * Get all game objects at a given position.
-     * <p>
-     *     Attached hitboxes gets checked. For example if you did something like
-     * </p>
+     * Get a list of all game objects that collide with a given game object.
      *
-     * @param x The x coordinate
-     * @param y The y coordinate
-     * @return A list of game objects at the given position
+     * @param gameObject The game object to check for collisions with
+     * @return List of all game objects that collide with the given game object
      */
-    public List<AbstractObjectBase<I>> getObjectsAt(int x, int y) {
-        synchronized (posFinderHitBox) {
-            posFinderHitBox.setPosition(x, y);
-        }
-
+    public List<AbstractObjectBase<I>> getCollisions(AbstractObjectBase<?> gameObject) {
         rwLock.readLock().lock();
         try {
             return gameObjects
                     .stream()
-                    .filter(entity -> {
-                        var intersection = new AtomicBoolean(false);
-
-                        //Check if parent hitbox intersects
-                        if (entity.getHitBox().intersects(posFinderHitBox)) return true;
-
-                        //Check if any child hitbox intersects
-                        entity.getHitBox().childAction(child -> {
-                            if (child.intersects(posFinderHitBox)) {
-                                intersection.set(true);
-                            }
-                        });
-                        return intersection.get();
-                    })
+                    .filter(gO -> !gO.isDisabled())
+                    .filter(gO -> gO.getHitBox().intersects(gameObject.getHitBox()))
                     .toList();
         } finally {
             rwLock.readLock().unlock();
         }
+    }
+
+    public List<AbstractObjectBase<I>> getCollisions(int x, int y, int width, int height, boolean includeChildren) {
+        var retu = new ArrayList<AbstractObjectBase<I>>();
+        rwLock.readLock().lock();
+        try {
+            for (var obj : gameObjects) {
+                if (obj.isDisabled()) continue;
+
+                if (obj.getHitBox().intersects(x, y, width, height)) {
+                    retu.add(obj);
+                }
+
+                if (!includeChildren) continue;
+                obj.getHitBox().childAction(child -> {
+                    if (child.intersects(x, y, width, height)) {
+                        retu.add(obj);
+                    }
+                });
+            }
+        } finally {
+            rwLock.readLock().unlock();
+        }
+        return retu;
     }
 
     /**
@@ -249,17 +224,15 @@ public class GameObjectManager<I> {
      * Get a game object from a given UUID.
      *
      * @param id The unique object id to search for
-     * @return The game object with the given UUID, or {@code null} if no such object exists
+     * @return an {@link Optional} containing the game object with the given UUID, or nothing if no such object exists
      */
-    @Nullable
-    public AbstractObjectBase<I> getGameObjectFromID(long id) {
+    public Optional<AbstractObjectBase<I>> getGameObjectFromID(long id) {
         rwLock.readLock().lock();
         try {
             return gameObjects
                     .stream()
                     .filter(gO -> gO.getId() == id)
-                    .findFirst()
-                    .orElse(null);
+                    .findFirst();
         } finally {
             rwLock.readLock().unlock();
         }
@@ -273,25 +246,6 @@ public class GameObjectManager<I> {
      */
     public boolean collides(AbstractObjectBase<?> gameObject) {
         return !getCollisions(gameObject).isEmpty();
-    }
-
-    /**
-     * Get a list of all game objects that collide with a given game object.
-     *
-     * @param gameObject The game object to check for collisions with
-     * @return List of all game objects that collide with the given game object
-     */
-    public List<AbstractObjectBase<I>> getCollisions(AbstractObjectBase<?> gameObject) {
-        rwLock.readLock().lock();
-        try {
-            return gameObjects
-                    .stream()
-                    .filter(gO -> !gO.isDisabled())
-                    .filter(gO -> gO.getHitBox().intersects(gameObject.getHitBox()))
-                    .toList();
-        } finally {
-            rwLock.readLock().unlock();
-        }
     }
 
     /**

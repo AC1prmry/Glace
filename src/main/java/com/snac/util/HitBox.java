@@ -25,6 +25,7 @@ import java.util.function.Consumer;
  * </p>
  *
  * By taking a look at {@link com.snac.core.object.AbstractObjectBase} you can also see an example of how to use this class.
+ * TODO: Completely switch to double -> Everything in double except for rendering
  */
 @Getter
 public class HitBox extends Attachable<HitBox> implements Serializable {
@@ -68,7 +69,7 @@ public class HitBox extends Attachable<HitBox> implements Serializable {
      * @param y the Y-value of the given rectangle
      * @param width the width of the given rectangle
      * @param height the height of the given rectangle
-     * @return {@code true} if these two hitboxes touches each other, otherwise {@code false}
+     * @return {@code true} if the hitbox intersects with the given area, otherwise {@code false}
      */
     public boolean intersects(int x, int y, int width, int height) {
         return this.x <= x + width &&
