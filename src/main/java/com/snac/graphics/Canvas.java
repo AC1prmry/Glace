@@ -172,10 +172,10 @@ public class Canvas<I> {
             }
         }
 
-        renderBuffer.stream()
-                .filter(Renderable::visible)
-                .forEach(r -> {
-                    r.render(brush);
-                });
+        for (var r : renderBuffer) {
+            if (r.visible()) {
+                r.render(brush);
+            }
+        }
     }
 }

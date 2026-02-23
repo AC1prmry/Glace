@@ -62,7 +62,8 @@ public abstract class Attachable<T extends Attachable<T>> implements Serializabl
      */
     public void addAttachment(T attachable) {
         if (attachable.isAttached()) {
-            var parent = getParent() == null ? "null" : getParent().getClass().getSimpleName();
+            assert getParent() != null;
+            var parent = getParent().getClass().getSimpleName();
             log.warn("Object {} is already attached to {}. It must be detached first.",
                     attachable.getClass().getSimpleName(),
                     parent);
