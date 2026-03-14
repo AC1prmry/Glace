@@ -6,48 +6,52 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.util.function.Consumer;
 
+import static com.snac.util.Vector2D.roundDouble;
+
 /**
  * This class provides basic methods to detect collisions between objects.<br>
  * By extending {@link Attachable}, objects of this class can be attached to each other.
- * Because the shape of a hitbox is always a rectangle this can be used to attach multiple hitboxes to each other
- * to refine collision detection.
+ * <p>
+ * Because the shape of a hitbox is always a rectangle you can attach hitboxes to each other to implement more accurate collision detection.
+ * However, too many attachments can also negatively impact performance.
  *
  * <p>
  * Basic example how to use this class:
  * <pre>{@code
- *         var hitbox1 = new HitBox(playerX, playerY, width, height);
- *         var hitbox2 = new HitBox(attackerX, attackerY, width, height);
+ *         HitBox hitbox1 = new HitBox(playerX, playerY, width, height);
+ *         HitBox hitbox2 = new HitBox(attackerX, attackerY, width, height);
  *
  *         if (hitbox1.intersects(hitbox2)) {
  *             damagePlayer();
  *         }
  * }</pre>
- * </p>
  *
  * By taking a look at {@link com.snac.core.object.AbstractObjectBase} you can also see an example of how to use this class.
- * TODO: Completely switch to double -> Everything in double except for rendering
  */
 @Getter
 public class HitBox extends Attachable<HitBox> implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    private int x;
-    private int y;
-    private int width;
-    private int height;
+    private Vector2D pos;
+    private double width;
+    private double height;
 
     /**
-     * Constructor to create a new {@link HitBox}-instance.
+     * Constructor to create a new HitBox-instance.
      *
      * @param x the initial X-Position of this hitbox
      * @param y the initial Y-Position of this Hitbox
      * @param width the initial Hitbox width
      * @param height the initial Hitbox height
      */
-    public HitBox(int x, int y, int width, int height) {
-        this.x = x;
-        this.y = y;
+    public HitBox(double x, double y, double width, double height) {
+        this(new Vector2D(x, y), width, height);
+    }
+
+    //TODO: Docs
+    public HitBox(Vector2D position, double width, double height) {
+        this.pos = position;
         this.width = width;
         this.height = height;
     }
@@ -59,23 +63,26 @@ public class HitBox extends Attachable<HitBox> implements Serializable {
      * @return {@code true} if these two hitboxes touches each other, otherwise {@code false}
      */
     public boolean intersects(HitBox hitBox) {
-        return intersects(hitBox.getX(), hitBox.getY(), hitBox.getWidth(), hitBox.getHeight());
+        var pos = hitBox.getPos();
+        return intersects(pos.getX(), pos.getY(), hitBox.getWidth(), hitBox.getHeight());
     }
 
     /**
      * Method to check if this hitbox touches the given rectangle.
      *
-     * @param x the X-value of the given rectangle
-     * @param y the Y-value of the given rectangle
+     * @param otherX the X-value of the given rectangle
+     * @param otherY the Y-value of the given rectangle
      * @param width the width of the given rectangle
      * @param height the height of the given rectangle
      * @return {@code true} if the hitbox intersects with the given area, otherwise {@code false}
      */
-    public boolean intersects(int x, int y, int width, int height) {
-        return this.x <= x + width &&
-                this.x + this.width >= x &&
-                this.y <= y + height &&
-                this.y + this.height >= y;
+    public boolean intersects(double otherX, double otherY, double width, double height) {
+        var x = getPos().getX();
+        var y = getPos().getY();
+        return x <= otherX + width &&
+                x + getWidth() >= x &&
+                y <= otherY + height &&
+                y + getHeight() >= y;
     }
 
     /**
@@ -84,7 +91,7 @@ public class HitBox extends Attachable<HitBox> implements Serializable {
      * @param width the new hitbox width
      * @param height the new hitbox height
      */
-    public void resize(int width, int height) {
+    public void resize(double width, double height) {
         this.width = width;
         this.height = height;
     }
@@ -95,13 +102,12 @@ public class HitBox extends Attachable<HitBox> implements Serializable {
      * @param dx the value added to the X-position
      * @param dy the value added to the Y-position
      */
-    public void move(int dx, int dy) {
-        var oldX = this.x;
-        var oldY = this.y;
+    public void move(double dx, double dy) {
+        var oldX = getPos().getX();
+        var oldY = getPos().getY();
 
-        onMove(x + dx, y + dy);
-        x += dx;
-        y += dy;
+        onMove(getPos().getX() + dx, getPos().getY() + dy);
+        getPos().add(dx, dy);
         onMoved(oldX, oldY);
     }
 
@@ -113,7 +119,7 @@ public class HitBox extends Attachable<HitBox> implements Serializable {
      * @param width the new hitbox width
      * @param height the new hitbox height
      */
-    public void setBounds(int x, int y, int width, int height) {
+    public void setBounds(double x, double y, double width, double height) {
         var oldX = this.x;
         var oldY = this.y;
 
@@ -128,7 +134,7 @@ public class HitBox extends Attachable<HitBox> implements Serializable {
     /**
      * Changes the hitbox position to the given X and Y values.
      */
-    public void setPosition(int x, int y) {
+    public void setPosition(double x, double y) {
         var oldX = this.x;
         var oldY = this.y;
 
@@ -164,7 +170,7 @@ public class HitBox extends Attachable<HitBox> implements Serializable {
      * @param oldX the X-value before the hitbox moved
      * @param oldY the Y-Value before the hitbox moved
      */
-    protected void onMoved(int oldX, int oldY) {
+    protected void onMoved(double oldX, double oldY) {
         childAction(child -> {
             child.move(getX() - oldX, getY() - oldY);
         });
@@ -178,12 +184,52 @@ public class HitBox extends Attachable<HitBox> implements Serializable {
      * @param newX the X-value this hitbox will move to
      * @param newY the Y-Value this hitbox will move to
      */
-    protected void onMove(int newX, int newY) {
+    protected void onMove(double newX, double newY) {
+    }
+
+    /**
+     * Returns the rounded X coordinate as integer.<br>
+     * If the X-Value overflows an int, it gets limited by {@link Vector2D#limitDoubleIntSafe(double)},
+     * to prevent an {@link ArithmeticException}
+     *
+     * @return rounded X (integer)
+     */
+    public int getXRound() {
+        return roundDouble(x);
+    }
+
+    /**
+     * Returns the rounded Y coordinate as integer.<br>
+     * If the Y-Value overflows an int, it gets limited by {@link Vector2D#limitDoubleIntSafe(double)},
+     * to prevent an {@link ArithmeticException}
+     *
+     * @return rounded Y (integer)
+     */
+    public int getYRound() {
+        return roundDouble(y);
+    }
+
+    /**
+     * @return the rounded width-value as integer.
+     * If the width-value overflows an int, it gets limited by {@link Vector2D#limitDoubleIntSafe(double)},
+     * to prevent an {@link ArithmeticException}
+     */
+    public int getWidthRound() {
+        return roundDouble(width);
+    }
+
+    /**
+     * @return the rounded height-value as integer.
+     * If the height-value overflows an int, it gets limited by {@link Vector2D#limitDoubleIntSafe(double)},
+     * to prevent an {@link ArithmeticException}
+     */
+    public int getHeightRound() {
+        return roundDouble(height);
     }
 
     /**
      * Overridden method from {@link Attachable} ({@link Attachable#childAction(Consumer)}) to prevent an infinite loop,
-     * because recursion is already provided in {@link #onMove(int, int)}.
+     * because recursion is already provided in {@link #onMove(double, double)}.
      */
     @Override
     public void childAction(Consumer<HitBox> childAction) {

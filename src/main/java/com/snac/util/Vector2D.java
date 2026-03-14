@@ -24,7 +24,6 @@ import java.io.Serializable;
  * Note: This class implements {@link Serializable}, allowing instances to be serialized. <br>
  * Docs written by ChatGPT btw. Sorry, I was just too lazy...
  * </p>
- * TODO: Completely switch to double
  */
 @Getter
 @Slf4j
@@ -131,7 +130,7 @@ public class Vector2D implements Serializable {
      */
     public Vector2D divide(double scalar) {
         if (scalar == 0) {
-            log.error("Division by zero", new ArithmeticException("Division by zero"));
+            throw new ArithmeticException("Division by zero");
         }
         set(this.x/scalar, this.y/scalar);
         return this;
@@ -148,19 +147,18 @@ public class Vector2D implements Serializable {
     }
 
     /**
-     * Sets the x and y components of this vector and prevents too big values via {@link #limitDoubleIntSafe(double)}.<br>
-     * This method is for overriding to implement actions on change.
+     * Sets the x and y components of this vector.
+     * This method can also get overriding to implement actions on change.
      * @param x new x value
      * @param y new y value
      */
     public synchronized void set(double x, double y) {
         oldX = this.x;
         oldY = this.y;
-        this.x = limitDoubleIntSafe(x);
-        this.y = limitDoubleIntSafe(y);
+        this.x = x;
+        this.y = y;
     }
 
-    //TODO: Only limit when needed (getRoundX)
     /**
      * Clamps the given double value to a range that ensures it can be
      * safely rounded and converted to an int without causing an
@@ -260,35 +258,59 @@ public class Vector2D implements Serializable {
     }
 
     /**
-     * Returns the rounded X coordinate of this vector.
+     * Returns the rounded X coordinate as integer of this vector.<br>
+     * If the X-Value overflows an int, it gets limited by {@link #limitDoubleIntSafe(double)},
+     * to prevent an {@link ArithmeticException}
      *
      * @return rounded X (integer)
      */
     public int getXRound() {
-        return Math.toIntExact(Math.round(x));
+        return roundDouble(x);
     }
 
     /**
-     * Returns the rounded Y coordinate of this vector.
+     * Returns the rounded Y coordinate of this vector.<br>
+     * If the Y-Value overflows an int, it gets limited by {@link #limitDoubleIntSafe(double)},
+     * to prevent an {@link ArithmeticException}
      *
      * @return rounded Y (integer)
      */
     public int getYRound() {
-        return Math.toIntExact(Math.round(y));
+        return roundDouble(y);
     }
 
-    //TODO: Float or Double? Why mixed?
+    //TODO: Docs
+    public float getXf() {
+        return (float) getX();
+    }
+
+    public float getYf() {
+        return (float) getY();
+    }
+
     /**
      * Returns interpolated X-value. Used for smooth rendering (Should be used as X-value in your render methods).<br>
      *
      * Same as {@link Renderer#getInterpolatedX(float, float, float)} with fewer parameters
+     *
+     * @param alpha Interpolation factor (0 = lastX, 1 = newX).
+     *               If using {@link com.snac.util.Loop}, you can get this value via {@link Loop#getAlpha()}
+     *               (if the loop is running, otherwise it will return 0)
+     * @return The interpolated X position
      */
     public float getInterpolatedX(float alpha) {
         return Renderer.getInterpolatedX((float) getOldX(), (float) getX(), alpha);
     }
 
     /**
-     * See {@link #getInterpolatedX(float)}
+     * Returns interpolated Y-value. Used for smooth rendering (Should be used as Y-value in your render methods).<br>
+     *
+     * Same as {@link Renderer#getInterpolatedX(float, float, float)} with fewer parameters
+     *
+     * @param alpha Interpolation factor (0 = lastX, 1 = newX).
+     *               If using {@link com.snac.util.Loop}, you can get this value via {@link Loop#getAlpha()}
+     *               (if the loop is running, otherwise it will return 0)
+     * @return The interpolated Y position
      */
     public float getInterpolatedY(float alpha) {
         return Renderer.getInterpolatedY((float) getOldY(), (float) getY(), alpha);
@@ -299,5 +321,9 @@ public class Vector2D implements Serializable {
      */
     public boolean isZero() {
         return x == 0 && y == 0;
+    }
+
+    public static int roundDouble(double d) {
+        return Math.toIntExact(Math.round(limitDoubleIntSafe(d)));
     }
 }

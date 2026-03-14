@@ -269,9 +269,9 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
     @Override
     public void render(Brush<I> brush) {
         if (showHitBox) {
-            brush.drawRectangle(getHitBox().getX(), getHitBox().getY(), getHitBox().getWidth(), getHitBox().getHeight(), false);
+            brush.drawRectangle(getHitBox().getXRound(), getHitBox().getYRound(), getHitBox().getWidthRound(), getHitBox().getHeightRound(), false);
             getHitBox().childAction(child -> {
-                brush.drawRectangle(child.getX(), child.getY(), child.getWidth(), child.getHeight(), false);
+                brush.drawRectangle(child.get, child.getY(), child.getWidth(), child.getHeight(), false);
             });
         }
     }
