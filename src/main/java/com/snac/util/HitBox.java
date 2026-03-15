@@ -33,9 +33,9 @@ public class HitBox extends Attachable<HitBox> implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    private Vector2D pos;
-    private double width;
-    private double height;
+    private final Vector2D pos;
+    private volatile double width;
+    private volatile double height;
 
     /**
      * Constructor to create a new HitBox-instance.
@@ -46,12 +46,13 @@ public class HitBox extends Attachable<HitBox> implements Serializable {
      * @param height the initial Hitbox height
      */
     public HitBox(double x, double y, double width, double height) {
-        this(new Vector2D(x, y), width, height);
-    }
-
-    //TODO: Docs
-    public HitBox(Vector2D position, double width, double height) {
-        this.pos = position;
+        this.pos = new Vector2D(x, y) {
+            @Override
+            public synchronized void set(double x, double y) {
+                super.set(x, y);
+                onMoved(this.getOldX(), this.getOldY());
+            }
+        };
         this.width = width;
         this.height = height;
     }
@@ -63,8 +64,7 @@ public class HitBox extends Attachable<HitBox> implements Serializable {
      * @return {@code true} if these two hitboxes touches each other, otherwise {@code false}
      */
     public boolean intersects(HitBox hitBox) {
-        var pos = hitBox.getPos();
-        return intersects(pos.getX(), pos.getY(), hitBox.getWidth(), hitBox.getHeight());
+        return intersects(getX(), getY(), hitBox.getWidth(), hitBox.getHeight());
     }
 
     /**
@@ -77,12 +77,10 @@ public class HitBox extends Attachable<HitBox> implements Serializable {
      * @return {@code true} if the hitbox intersects with the given area, otherwise {@code false}
      */
     public boolean intersects(double otherX, double otherY, double width, double height) {
-        var x = getPos().getX();
-        var y = getPos().getY();
-        return x <= otherX + width &&
-                x + getWidth() >= x &&
-                y <= otherY + height &&
-                y + getHeight() >= y;
+        return getX() <= otherX + width &&
+                getX() + getWidth() >= getX() &&
+                getY() <= otherY + height &&
+                getY() + getHeight() >= getY();
     }
 
     /**
@@ -97,18 +95,12 @@ public class HitBox extends Attachable<HitBox> implements Serializable {
     }
 
     /**
-     * Moves the hitbox position.
+     * Sets the hitbox position and size to the position and size of another hitbox.
      *
-     * @param dx the value added to the X-position
-     * @param dy the value added to the Y-position
+     * @param hitBox the hitbox from which the position and size gets copied.
      */
-    public void move(double dx, double dy) {
-        var oldX = getPos().getX();
-        var oldY = getPos().getY();
-
-        onMove(getPos().getX() + dx, getPos().getY() + dy);
-        getPos().add(dx, dy);
-        onMoved(oldX, oldY);
+    public void setBounds(HitBox hitBox) {
+        setBounds(hitBox.getX(), hitBox.getY(), hitBox.getWidth(), hitBox.getHeight());
     }
 
     /**
@@ -120,45 +112,9 @@ public class HitBox extends Attachable<HitBox> implements Serializable {
      * @param height the new hitbox height
      */
     public void setBounds(double x, double y, double width, double height) {
-        var oldX = this.x;
-        var oldY = this.y;
-
-        onMove(x, y);
-        this.x = x;
-        this.y = y;
+        setPos(x, y);
         this.width = width;
         this.height = height;
-        onMoved(oldX, oldY);
-    }
-
-    /**
-     * Changes the hitbox position to the given X and Y values.
-     */
-    public void setPosition(double x, double y) {
-        var oldX = this.x;
-        var oldY = this.y;
-
-        onMove(x, y);
-        this.x = x;
-        this.y = y;
-        onMoved(oldX, oldY);
-    }
-
-    /**
-     * Sets the hitbox position and size to the position and size of another hitbox.
-     *
-     * @param hitBox the hitbox from which the position and size gets copied.
-     */
-    public void setBounds(HitBox hitBox) {
-        var oldX = this.x;
-        var oldY = this.y;
-
-        onMove(hitBox.getX(), hitBox.getY());
-        this.x = hitBox.getX();
-        this.y = hitBox.getY();
-        this.width = hitBox.getWidth();
-        this.height = hitBox.getHeight();
-        onMoved(oldX, oldY);
     }
 
     /**
@@ -172,19 +128,36 @@ public class HitBox extends Attachable<HitBox> implements Serializable {
      */
     protected void onMoved(double oldX, double oldY) {
         childAction(child -> {
-            child.move(getX() - oldX, getY() - oldY);
+            child.getPos().add(getX() - oldX, getY() - oldY);
         });
     }
 
     /**
-     * Callback for hitbox movement.
-     * Gets called before the hitbox changed its position.
-     * Can be overridden to implement custom functionality before the hitbox moves.
+     * Wrapper method for {@link Vector2D#set(double, double)}
      *
-     * @param newX the X-value this hitbox will move to
-     * @param newY the Y-Value this hitbox will move to
+     * @param x the new X-Value of this hitbox
+     * @param y the new Y-Value of this hitbox
      */
-    protected void onMove(double newX, double newY) {
+    public void setPos(double x, double y) {
+        getPos().set(x, y);
+    }
+
+    /**
+     * Wrapper method for {@link Vector2D#getX()}
+     *
+     * @return the X-Value of this hitbox
+     */
+    public double getX() {
+        return getPos().getX();
+    }
+
+    /**
+     * Wrapper method for {@link Vector2D#getY()}
+     *
+     * @return the Y-Value of this hitbox
+     */
+    public double getY() {
+        return getPos().getY();
     }
 
     /**
@@ -195,7 +168,7 @@ public class HitBox extends Attachable<HitBox> implements Serializable {
      * @return rounded X (integer)
      */
     public int getXRound() {
-        return roundDouble(x);
+        return roundDouble(getX());
     }
 
     /**
@@ -206,7 +179,7 @@ public class HitBox extends Attachable<HitBox> implements Serializable {
      * @return rounded Y (integer)
      */
     public int getYRound() {
-        return roundDouble(y);
+        return roundDouble(getY());
     }
 
     /**
@@ -228,8 +201,8 @@ public class HitBox extends Attachable<HitBox> implements Serializable {
     }
 
     /**
-     * Overridden method from {@link Attachable} ({@link Attachable#childAction(Consumer)}) to prevent an infinite loop,
-     * because recursion is already provided in {@link #onMove(double, double)}.
+     * Overrides {@link Attachable#childAction(Consumer)} method to prevent an infinite loop,
+     * because recursion is already provided in {@link #onMoved(double, double)}.
      */
     @Override
     public void childAction(Consumer<HitBox> childAction) {
@@ -241,6 +214,6 @@ public class HitBox extends Attachable<HitBox> implements Serializable {
 
     @Override
     public String toString() {
-        return "HitBox [x=" + x + ", y=" + y + ", width=" + width + ", height=" + height;
+        return "HitBox [x=" + getX() + ", y=" + getY() + ", width=" + width + ", height=" + height;
     }
 }

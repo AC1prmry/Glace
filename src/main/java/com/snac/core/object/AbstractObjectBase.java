@@ -261,8 +261,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
     /**
      * Renders this object with the given brush.
      * <p>
-     * <b>Recommendation:</b> Use {@link Renderer#getInterpolatedX(float, float, float)} and {@link Renderer#getInterpolatedY(float, float, float)} for smooth rendering</b>
-     * </p>
+     * <b>Recommendation:</b> Use {@link Renderer#getInterpolatedX(float, float, float)} and {@link Renderer#getInterpolatedY(float, float, float)} for smooth rendering
      *
      * @param brush drawing context provided by the renderer
      */
@@ -271,7 +270,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
         if (showHitBox) {
             brush.drawRectangle(getHitBox().getXRound(), getHitBox().getYRound(), getHitBox().getWidthRound(), getHitBox().getHeightRound(), false);
             getHitBox().childAction(child -> {
-                brush.drawRectangle(child.get, child.getY(), child.getWidth(), child.getHeight(), false);
+                brush.drawRectangle(child.getXRound(), child.getYRound(), child.getWidthRound(), child.getHeightRound(), false);
             });
         }
     }
@@ -407,7 +406,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
      * Each enum value holds:
      * </p>
      * <ul>
-     *   <li><b>angle</b> — the nominal heading in degrees, where {@code 0} = {@link #RIGHT},
+     *   <li><b>Angle</b> — the nominal heading in degrees, where {@code 0} = {@link #RIGHT},
      *   {@code 90} = {@link #UP}, {@code 180} = {@link #LEFT}, and {@code 270} = {@link #DOWN}.
      *   Angles increase counter‑clockwise.</li>
      *   <li><b>deltaX</b> and <b>deltaY</b> — the components of a unit step in this direction,

@@ -22,7 +22,6 @@ import java.io.Serializable;
  *
  * <p>
  * Note: This class implements {@link Serializable}, allowing instances to be serialized. <br>
- * Docs written by ChatGPT btw. Sorry, I was just too lazy...
  * </p>
  */
 @Getter
@@ -277,15 +276,6 @@ public class Vector2D implements Serializable {
      */
     public int getYRound() {
         return roundDouble(y);
-    }
-
-    //TODO: Docs
-    public float getXf() {
-        return (float) getX();
-    }
-
-    public float getYf() {
-        return (float) getY();
     }
 
     /**

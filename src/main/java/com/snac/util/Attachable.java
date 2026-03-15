@@ -28,7 +28,7 @@ import java.util.function.Consumer;
  *
  * <p>
  * Oh, and yes — you probably noticed the {@code @SuppressWarnings("unchecked")}.
- * Please just use the correct generic type to avoid exceptions.
+ * Please use the correct generic type to avoid exceptions.
  * I couldn't figure what's the best way to make it completely type safe.
  * </p>
  *
@@ -86,7 +86,7 @@ public abstract class Attachable<T extends Attachable<T>> implements Serializabl
     }
 
     /**
-     * Name says it all I think.
+     * Name says it all, I think.
      *
      * @return {@code true} if the object is attached to another object. Otherwise {@code false}
      */
@@ -96,7 +96,7 @@ public abstract class Attachable<T extends Attachable<T>> implements Serializabl
 
     /**
      * You can use this method to apply specific functionality to every child of an object.
-     * In following example, every child (and children of child (grandchildren or something)) gets a position update when the parent is moving:
+     * In the following example, every child (and children of child (grandchildren or something)) gets a position update when the parent is moving:
      * <pre>{@code
      *      //In this example #onPositionChange gets called when position of parent changes
      *      public void onPositionChange() {

@@ -18,6 +18,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 //TODO: Make default implementations easier to use (interpolation, ...)
+//TODO: Modules
+//TODO: Package info
 @Getter
 @Setter
 @Slf4j

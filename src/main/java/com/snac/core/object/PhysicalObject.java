@@ -67,12 +67,12 @@ public abstract class PhysicalObject<I> extends AbstractObjectBase<I> {
 
     public float sweptCollisionX(float distance, HitBox[] hitBoxes) {
         collisionBox.resize((int) Math.abs(distance), collisionBox.getHeight());
-        collisionBox.setPosition((int) (distance < 0 ? collisionBox.getX() - Math.abs(distance) : collisionBox.getX()), collisionBox.getY());
+        collisionBox.setPos(distance < 0 ? collisionBox.getX() - Math.abs(distance) : collisionBox.getX(), collisionBox.getY());
 
         float nearest = distance + 1;
         for (var box : hitBoxes) {
             if (collisionBox.intersects(box)) {
-                var dist = Math.max(Math.abs(box.getX()), Math.abs(collisionBox.getX())) -
+                var dist = Math.max(Math.abs(box.getXRound()), Math.abs(collisionBox.getX())) -
                         Math.min(Math.abs(box.getX()), Math.abs(collisionBox.getX()));
 
                 if (nearest == null || dist < Math.abs(nearest.getPosition().getXRound())) {

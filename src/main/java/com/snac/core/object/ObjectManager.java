@@ -85,10 +85,7 @@ public class ObjectManager<I> {
      * @return this manager instance, for chaining
      */
     public ObjectManager<?> destroyGameObject(long id) {
-        var gameObject = getGameObjectFromID(id);
-        if (gameObject != null) {
-            destroyGameObject(gameObject);
-        }
+        getGameObjectFromID(id).ifPresent(this::destroyGameObject);
         return this;
     }
 
@@ -176,7 +173,7 @@ public class ObjectManager<I> {
      * @return {@code true} if the UUID exists, otherwise {@code false}
      */
     public boolean containsGameObjectFromUUID(long id) {
-        return getGameObjectFromID(id) != null;
+        return getGameObjectFromID(id).isPresent();
     }
 
     /**
