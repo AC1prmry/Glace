@@ -212,13 +212,52 @@ public class Vector2D implements Serializable {
     /**
      * Calculates the Euclidean distance between this vector and another vector.
      *
-     * @param other the other vector
-     * @return the distance between the two vectors
+     * @param other the other vector to measure the distance to
+     * @return the Euclidean distance between this vector and the specified vector
      */
     public double distanceTo(Vector2D other) {
-        double dx = this.x - other.x;
-        double dy = this.y - other.y;
+        return distanceTo(other.getX(), other.getY());
+    }
+
+    /**
+     * Calculates the Euclidean distance between this vector and a point specified by (x, y).
+     *
+     * @param x the x-coordinate of the point
+     * @param y the y-coordinate of the point
+     * @return the distance between this vector and the specified point
+     */
+    public double distanceTo(double x, double y) {
+        double dx = getX() - x;
+        double dy = getY() - y;
         return Math.sqrt(dx * dx + dy * dy);
+    }
+
+
+    /**
+     * Calculates the squared Euclidean distance between this vector and another vector.
+     * Using the squared distance avoids the computational cost of a square root operation
+     * and is useful in scenarios where exact distance is not necessary.
+     *
+     * @param other the other vector to measure the squared distance to
+     * @return the squared Euclidean distance between this vector and the specified vector
+     */
+    public double distanceSqrt(Vector2D other) {
+        return distanceSqrt(other.getX(), other.getY());
+    }
+
+    /**
+     * Calculates the squared Euclidean distance between this vector and a point specified by (x, y).
+     * Squared distance is used to avoid the computational cost of a square root operation
+     * and is useful in scenarios where the exact distance is not necessary.
+     *
+     * @param x the x-coordinate of the point
+     * @param y the y-coordinate of the point
+     * @return the squared Euclidean distance between this vector and the specified point
+     */
+    public double distanceSqrt(double x, double y) {
+        double dx = this.x - x;
+        double dy = this.y - y;
+        return dx * dx + dy * dy;
     }
 
     /**
