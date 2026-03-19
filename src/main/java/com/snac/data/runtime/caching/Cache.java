@@ -62,6 +62,7 @@ import java.util.stream.Stream;
  * </ul>
  *
  * @param <T> the type of objects to be stored in the cache
+ * TODO: Better performance? (less streams, null instead of Optional)
  */
 @Getter
 @Slf4j

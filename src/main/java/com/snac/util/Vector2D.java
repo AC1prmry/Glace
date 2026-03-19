@@ -215,8 +215,8 @@ public class Vector2D implements Serializable {
      * @param other the other vector to measure the distance to
      * @return the Euclidean distance between this vector and the specified vector
      */
-    public double distanceTo(Vector2D other) {
-        return distanceTo(other.getX(), other.getY());
+    public double distance(Vector2D other) {
+        return distance(other.getX(), other.getY());
     }
 
     /**
@@ -226,7 +226,7 @@ public class Vector2D implements Serializable {
      * @param y the y-coordinate of the point
      * @return the distance between this vector and the specified point
      */
-    public double distanceTo(double x, double y) {
+    public double distance(double x, double y) {
         double dx = getX() - x;
         double dy = getY() - y;
         return Math.sqrt(dx * dx + dy * dy);

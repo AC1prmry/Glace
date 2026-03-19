@@ -7,7 +7,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.Serial;
 import java.util.List;
-import java.util.Optional;
 
 //Implement Swept AABB Collision detection
 @Getter
@@ -53,40 +52,66 @@ public abstract class PhysicalObject<I> extends AbstractObjectBase<I> {
         }
 
         var collisions = manager.getCollisions(this);
-
-        onCollide(collisions);
     }
 
 
-    public Optional<AbstractObjectBase<I>> sweptCollisionX(float distance) {
-        collisionBox.resize((int) distance, collisionBox.getHeight());
-        if (getCollisions(collisionBox.getX(), collisionBox.getY(), collisionBox.getWidth(), collisionBox.getHeight(), true).size() > 0) {
+    @Nullable
+    public HitBox sweptBoxCollisionX(double distance, HitBox... hitBoxes) {
+        synchronized (collisionBox) {
+            collisionBox.resize(Math.abs(distance), collisionBox.getHeight());
+            collisionBox.setPos(distance < 0
+                    ? collisionBox.getX() - Math.abs(distance)
+                    : collisionBox.getX(), collisionBox.getY());
 
-        }
-    }
+            double nearestDistance = Double.MAX_VALUE;
+            HitBox nearestBox = null;
+            for (var box : hitBoxes) {
+                if (collisionBox.intersects(box)) {
 
-    public float sweptCollisionX(float distance, HitBox[] hitBoxes) {
-        collisionBox.resize((int) Math.abs(distance), collisionBox.getHeight());
-        collisionBox.setPos(distance < 0 ? collisionBox.getX() - Math.abs(distance) : collisionBox.getX(), collisionBox.getY());
+                    var dist = distance < 0
+                            //Direction is left
+                            ? collisionBox.getPos().distanceSqrt(box.getX() + box.getWidth(), collisionBox.getY())
+                            //Direction is right
+                            : box.getPos().distanceSqrt(collisionBox.getX() + collisionBox.getWidth(), collisionBox.getY());
 
-        float nearest = distance + 1;
-        for (var box : hitBoxes) {
-            if (collisionBox.intersects(box)) {
-                var dist = Math.max(Math.abs(box.getXRound()), Math.abs(collisionBox.getX())) -
-                        Math.min(Math.abs(box.getX()), Math.abs(collisionBox.getX()));
-
-                if (nearest == null || dist < Math.abs(nearest.getPosition().getXRound())) {
-                    nearest = b;
+                    if (nearestDistance > dist) {
+                        nearestDistance = dist;
+                        nearestBox = box;
+                    }
                 }
             }
+            return nearestBox;
+        }
+    }
+
+    public double sweptCollisionX(double distance, HitBox... hitBoxes) {
+        var collisionBox = sweptBoxCollisionX(distance, hitBoxes);
+        if (collisionBox == null) {
+            return Double.MAX_VALUE;
         }
 
-
+        return distance < 0
+                ? collisionBox.getX() + collisionBox.getWidth()
+                : collisionBox.getX();
     }
 
-    public Optional<AbstractObjectBase<I>> sweptCollisionY(float distance) {
+/*
+    public AbstractObjectBase<?> sweptObjectCollisionX(double distance, AbstractObjectBase<?>... objects) {
+        synchronized (collisionBox) {
+            collisionBox.resize(Math.abs(distance), collisionBox.getHeight());
+            collisionBox.setPos(distance < 0
+                    ? collisionBox.getX() - Math.abs(distance)
+                    : collisionBox.getX(), collisionBox.getY());
 
+            double nearestDistance = Double.MAX_VALUE;
+            AbstractObjectBase<?> nearestObj = null;
+            for (var obj : objects) {
+
+                obj.getHitBox().childAction();
+            }
+        }
     }
+ */
 
     public boolean isOnGround() {
         return false;

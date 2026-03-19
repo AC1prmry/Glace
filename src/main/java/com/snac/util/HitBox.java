@@ -1,5 +1,6 @@
 package com.snac.util;
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 import java.io.Serial;
@@ -29,6 +30,7 @@ import static com.snac.util.Vector2D.roundDouble;
  * By taking a look at {@link com.snac.core.object.AbstractObjectBase} you can also see an example of how to use this class.
  */
 @Getter
+@AllArgsConstructor
 public class HitBox extends Attachable<HitBox> implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
