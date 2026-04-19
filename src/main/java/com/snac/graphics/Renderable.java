@@ -11,6 +11,7 @@ import java.util.List;
  * </p>
  * Also see {@link Renderer}
  */
+@FunctionalInterface
 public interface Renderable<I> {
 
     /**

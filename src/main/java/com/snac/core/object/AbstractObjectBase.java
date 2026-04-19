@@ -33,8 +33,9 @@ import java.util.function.Consumer;
  * To provide functionality for your game objects, you need to add them to a valid {@link ObjectManager} instance.
  *
  * <p>
- * <b>Note:</b> By removing unused objects via {@link ObjectManager#destroyGameObject(AbstractObjectBase)} you can save resources.
- * To implement such features you can use a cache (like {@link com.snac.data.runtime.caching.Cache Cache} with {@link com.snac.data.runtime.caching.CacheListener CacheListener} for custom functionality)
+ * <b>Note:</b> Remove unused objects via {@link ObjectManager#destroyGameObject(AbstractObjectBase)}
+ * or reuse them to save resources.
+ * <br>Using a {@link com.snac.data.runtime.caching.Cache Cache} can help removing old objects automatically.
  * </p>
  *
  * @param <I> Type of the visual asset associated with this object (e.g., image or sprite handle).
@@ -236,8 +237,6 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
         var renderer = manager.getRenderer();
         var distance = Math.max(Math.abs(this.position.getXRound() - renderer.getWindowWidth() / 2),
                 Math.abs(this.position.getYRound() - renderer.getWindowHeight() / 2));
-
-        System.out.println(distance + "  |  " + getPosition().getX());
 
         if (renderDistance > 0) {
             setVisible(distance < renderDistance);

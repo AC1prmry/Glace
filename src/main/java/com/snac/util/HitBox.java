@@ -80,9 +80,9 @@ public class HitBox extends Attachable<HitBox> implements Serializable {
      */
     public boolean intersects(double otherX, double otherY, double width, double height) {
         return getX() <= otherX + width &&
-                getX() + getWidth() >= getX() &&
+                getX() + getWidth() >= otherX &&
                 getY() <= otherY + height &&
-                getY() + getHeight() >= getY();
+                getY() + getHeight() >= otherY;
     }
 
     /**
@@ -208,9 +208,9 @@ public class HitBox extends Attachable<HitBox> implements Serializable {
      */
     @Override
     public void childAction(Consumer<HitBox> childAction) {
-        if (attachments.isEmpty()) return;
-        synchronized (attachments) {
-            attachments.forEach(childAction);
+        if (directAttachments.isEmpty()) return;
+        synchronized (directAttachments) {
+            directAttachments.forEach(childAction);
         }
     }
 
