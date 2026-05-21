@@ -18,6 +18,7 @@ import java.util.function.BiConsumer;
 
 /**
  * TODO: VSync??
+ * TODO: Better docs
  * Implementation of {@link Renderer} based on Swing. See {@link Renderer}-Interface for more information.
  * <p>
  * The easiest way to modify the rendering process is by using {@link #setPreRender(Runnable)}, {@link #setRenderLoopAction(BiConsumer)} or {@link #setPostRender(Runnable)}<br>
@@ -79,8 +80,7 @@ public class SwingRenderer implements Renderer<BufferedImage> {
     @Override
     public void createWindow(int width, int height, String title) {
         if (frame != null) {
-            log.warn("Could not create window, only one window per renderer is allowed.");
-            return;
+            throw new IllegalStateException("Could not create window, only one window per renderer is allowed.");
         }
 
         //System.setProperty("sun.java2d.opengl", "true");
@@ -130,8 +130,7 @@ public class SwingRenderer implements Renderer<BufferedImage> {
     public void moveWindow(int x, int y) {
         runOnEDT(() -> {
             if (frame == null) {
-                log.warn("Can't move window, JFrame is null");
-                return;
+                throw new IllegalStateException("Could not move window, JFrame is null");
             }
 
             frame.setLocation(x, y);
@@ -145,8 +144,7 @@ public class SwingRenderer implements Renderer<BufferedImage> {
     public void resizeWindow(int width, int height) {
         runOnEDT(() -> {
             if (frame == null) {
-                log.warn("Can't resize window, JFrame is null");
-                return;
+                throw new IllegalStateException("Could not resize window, JFrame is null");
             }
 
             swingCanvas.setPreferredSize(new Dimension(width, height));
@@ -219,7 +217,7 @@ public class SwingRenderer implements Renderer<BufferedImage> {
                 return;
             }
 
-            boolean done = false;
+            var done = false;
             while (!done) {
                 Graphics2D g = null;
                 try {

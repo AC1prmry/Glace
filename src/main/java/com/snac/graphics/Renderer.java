@@ -88,12 +88,12 @@ public interface Renderer<I> {
     void render();
 
     /**
-     * @return the current width of the window. {@code <= -1} if no windows exists
+     * @return the current width of the window. {@code <= -1} if no window exists
      */
     int getWindowWidth();
 
     /**
-     * @return the current width of the window. {@code <= -1} if no windows exists
+     * @return the current width of the window. {@code <= -1} if no window exists
      */
     int getWindowHeight();
 

@@ -50,7 +50,8 @@ public class AnimationHandler<I> {
      */
     public void play(Animation<I> animation) {
         if (!animation.checkValidation()) {
-            log.warn("Couldn't play animation {}. Animation validation failed!", animation.getClass().getSimpleName());
+            throw new IllegalStateException("Failed to play animation %s. Animation validation failed!"
+                    .formatted(animation.getClass().getSimpleName()));
         }
         animations.add(animation);
         canvas.addRenderable(animation);
