@@ -5,11 +5,11 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -43,7 +43,6 @@ import java.util.stream.Stream;
  * imageCache.add("player_idle_image", new Image("resources/player_idle.png"));
  *
  * Image playerIdle = imageCache.get("player_idle_image"); // marks object as used
- * Image playerIdlePeek = imageCache.getKey("player_idle_image"); // or via stream.peek() - does not mark as used
  * }</pre>
  *
  * <p>
@@ -62,7 +61,6 @@ import java.util.stream.Stream;
  * </ul>
  *
  * @param <T> the type of objects to be stored in the cache
- * TODO: Better performance? (less streams, null instead of Optional)
  */
 @Getter
 @Slf4j
@@ -78,6 +76,17 @@ public class Cache<T> {
     protected final boolean temporalExpirationOnlyWhenUnused;
     protected final boolean oldIndexesExpire;
     protected final int indexExpireAfter;
+
+    /**
+     * This list is a snapshot of the current cached contents.<br>
+     * The list is unmodifiable, but the stored objects are the originals, which means they can be modified.
+     * <p>
+     * In this case it is mostly reccommendet to use {@link CachedObject#peek()} instead of
+     * {@link CachedObject#use()} to access the wrapped objects.<br>
+     * As {@link CachedObject#peek()} won't affect the object's last-used-time and index,
+     * object lifetime or internal behavior in cache also won't be affected.
+     */
+    protected final List<CachedObject<T>> cachedCopy;
 
     /**
      * Creates a new cache instance.
@@ -103,6 +112,7 @@ public class Cache<T> {
         this.lock = new ReentrantReadWriteLock();
         this.cached = new LinkedHashSet<>();
         this.listeners = Collections.synchronizedList(new ArrayList<>());
+        this.cachedCopy = Collections.unmodifiableList(new ArrayList<>());
     }
 
     /**
@@ -133,36 +143,42 @@ public class Cache<T> {
         if (getExpiresAfter() > 0) {
             lock.readLock().lock();
             try {
-                cached.stream()
-                        .filter(c -> !c.isExpired())
-                        .filter(obj -> (System.currentTimeMillis() - (isTemporalExpirationOnlyWhenUnused()
-                                ? obj.getLastUsed()
-                                : obj.getTimeAdded())) >= getExpireTimeUnit().toMillis(getExpiresAfter()))
-                        .forEach(CachedObject::expire);
+                for (var obj : cached) {
+                    if (obj.isExpired()) continue;
+
+                    long lifetime = System.currentTimeMillis() - (isTemporalExpirationOnlyWhenUnused()
+                            ? obj.getLastUsed()
+                            : obj.getTimeAdded());
+
+                    if (lifetime >= getExpireTimeUnit().toMillis(getExpiresAfter())) {
+                        obj.expire();
+                    }
+                }
             } finally {
                 lock.readLock().unlock();
             }
         }
 
         if (isDeleteAfterExpiration()) {
-            List<CachedObject<?>> toRemove;
-            lock.readLock().lock();
+            lock.writeLock().lock();
             try {
-                toRemove = cached.stream()
-                        .filter(CachedObject::isExpired)
-                        .collect(Collectors.toList());
+                cached.removeIf(CachedObject::isExpired);
             } finally {
-                lock.readLock().unlock();
+                lock.writeLock().unlock();
             }
-
-            toRemove.forEach(this::remove);
         }
 
 
-        var ueIndexes = cached.stream().filter(obj -> !obj.isExpired()).count();
-        if (isOldIndexesExpire() && ueIndexes > getIndexExpireAfter()) {
+        if (isOldIndexesExpire()) {
             lock.readLock().lock();
             try {
+                int ueIndexes = 0;
+                for (var obj : cached) {
+                    if (!obj.isExpired()) {
+                        ueIndexes++;
+                    }
+                }
+
                 var targetExpirations = ueIndexes - getIndexExpireAfter();
                 var expired = 0;
 
@@ -191,7 +207,7 @@ public class Cache<T> {
      * @param object The object you want to add
      */
     public void add(String key, T object) {
-        CachedObject<T> cachedObject = new CachedObject<>(this, key, object);
+        var cachedObject = new CachedObject<>(this, key, object);
         lock.writeLock().lock();
         try {
             listeners.forEach(listener -> listener.onCachedObjectAdd(cachedObject));
@@ -205,37 +221,43 @@ public class Cache<T> {
      * Get a cached object from its key.
      *
      * @param key The key of the object
-     * @return an {@link Optional} containing the value of this key if, or nothing if this key doesn't exist
+     * @return the object of this key, or {@code null} if the key doesn't exist
      */
-    public Optional<T> get(String key) {
+    @Nullable
+    public T get(String key) {
         lock.readLock().lock();
         try {
-            return cached.stream()
-                    .filter(obj -> obj.getKey().equals(key))
-                    .findFirst()
-                    .map(CachedObject::use);
-
+            for (var obj : cached) {
+                if (obj.getKey().equals(key)) {
+                    return obj.use();
+                }
+            }
         } finally {
             lock.readLock().unlock();
         }
+        return null;
     }
 
     /**
      * Get a key based on the object of this key.<br>
-     * The objects index or last-used-time won't be affected.
+     * The object index or last-used-time won't be affected.
      *
      * @param object The object you want to know the key from
-     * @return an {@link Optional} with the key of the object, or nothing if this object doesn't exist
+     * @return the key of the object, or {@code null} if this object doesn't exist
      */
-    public Optional<String> getKey(T object) {
+    @Nullable
+    public String getKey(T object) {
         lock.readLock().lock();
         try {
-            return cached.stream().filter(obj -> obj.peek().equals(object))
-                    .map(CachedObject::getKey)
-                    .findFirst();
+            for (var obj : cached) {
+                if (obj.peek().equals(object)) {
+                    return obj.getKey();
+                }
+            }
         } finally {
             lock.readLock().unlock();
         }
+        return null;
     }
 
     /**
@@ -245,7 +267,7 @@ public class Cache<T> {
      * @return {@code true} if the object is in the cache, otherwise {@code false}
      */
     public boolean contains(T object) {
-        return getKey(object).isPresent();
+        return getKey(object) != null;
     }
 
     /**
@@ -255,7 +277,7 @@ public class Cache<T> {
      * @return {@code true} if the key is in the cache, otherwise {@code false}
      */
     public boolean contains(String key) {
-        return get(key).isPresent();
+        return get(key) != null;
     }
 
     /**
@@ -276,62 +298,66 @@ public class Cache<T> {
      * </p>
      *
      * @param key The key of the object to be removed from the cache
+     * @return {@code true} if the object was removed, {@code false} if the key didn't exist
      */
-    public void remove(String key) {
+    public boolean remove(String key) {
         lock.writeLock().lock();
         try {
-            cached.stream()
-                    .filter(obj -> obj.getKey().equals(key))
-                    .forEach(obj -> {
-                        listeners.forEach(lstnr -> lstnr.onCachedObjectRemove(obj));
-                        cached.remove(obj);
-                    });
+            return cached.removeIf(obj -> {
+                if (obj.getKey().equals(key)) {
+                    listeners.forEach(lstnr -> lstnr.onCachedObjectRemove(obj));
+                    return true;
+                }
+                return false;
+            });
         } finally {
             lock.writeLock().unlock();
         }
     }
 
     /**
-     * Removes a specific object from the cache. Will do nothing if the object doesn't exist.
+     * Removes a specific object from the cache.
      * <p>
      * All registered {@link CacheListener} will be notified
      * via {@link CacheListener#onCachedObjectRemove(CachedObject)}
      * </p>
      *
      * @param object The object to be removed from the cache
+     * @return {@code true} if the object was removed, {@code false} if the object didn't exist
      */
-    public void remove(T object) {
-        lock.readLock().lock();
-        try {
-            cached.stream()
-                    .filter(obj -> obj.peek().equals(object))
-                    .forEach(obj -> remove(obj.getKey()));
-        } finally {
-            lock.readLock().unlock();
-        }
-    }
-
-    /**
-     * Removes a specific {@link CachedObject} from the cache.
-     * Will do nothing if the {@link CachedObject} doesn't exist.
-     * <p>
-     * All registered {@link CacheListener} will be notified
-     * via {@link CacheListener#onCachedObjectRemove(CachedObject)}
-     * </p>
-     *
-     * @param cObject The {@link CachedObject} to be removed from the cache
-     */
-    public void remove(CachedObject<?> cObject) {
+    public boolean remove(T object) {
         lock.writeLock().lock();
         try {
-            listeners.forEach(lstnr -> lstnr.onCachedObjectRemove(cObject));
-            cached.remove(cObject);
+            return cached.removeIf(obj -> obj.peek().equals(object));
         } finally {
             lock.writeLock().unlock();
         }
     }
 
     /**
+     * Removes a specific {@link CachedObject} from the cache.
+     * <p>
+     * All registered {@link CacheListener} will be notified
+     * via {@link CacheListener#onCachedObjectRemove(CachedObject)}
+     * </p>
+     *
+     * @param cObject The {@link CachedObject} to be removed from the cache
+     * @return {@code true} if the {@link CachedObject} was removed, {@code false} if the {@link CachedObject} didn't exist
+     */
+    public boolean remove(CachedObject<?> cObject) {
+        lock.writeLock().lock();
+        try {
+            listeners.forEach(lstnr -> lstnr.onCachedObjectRemove(cObject));
+            return cached.remove(cObject);
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    /**
+     * @deprecated Use {@link #getCachedCopy()} to access an unmodifiable copy of the cache,
+     * which can be used for debugging purposes or somehing like that.<br><br>
+     *
      * Returns a {@link Stream} of all currently cached {@link CachedObject} instances.
      * <p>
      * This method allows you to inspect the cache contents, e.g., for debugging,
@@ -341,9 +367,10 @@ public class Cache<T> {
      * <h3>Important Notes:</h3>
      * <ul>
      *   <li>
-     *     Accessing the cached object via {@link CachedObject#use()} affects it's last-used-time and index
-     *     (May affect the whole cache functionality).<br>
-     *     It's recommended to use {@link CachedObject#peek()}.
+     *     In this case it is reccommendet to use {@link CachedObject#peek()} instead of
+     *     {@link CachedObject#use()} to access objects.<br>
+     *     As {@link CachedObject#peek()} won't affect the object's last-used-time and index,
+     *     object lifetime or internal behavior in cache also won't be affected.
      *   </li>
      *   <li>
      *     The returned stream is based on a snapshot copy of the current cache contents.
@@ -354,6 +381,7 @@ public class Cache<T> {
      *
      * @return A snapshot stream of currently cached {@link CachedObject} entries
      */
+    @Deprecated
     public Stream<CachedObject<T>> stream() {
         lock.readLock().lock();
         try {
@@ -364,11 +392,14 @@ public class Cache<T> {
     }
 
     /**
-     * Clears every {@link CachedObject} from this Cache.
+     * Clears every {@link CachedObject} from this Cache. Also notifies every Listener
      */
     public void clear() {
         lock.writeLock().lock();
         try {
+            for (var obj : cached) {
+                listeners.forEach(lstnr -> lstnr.onCachedObjectRemove(obj));
+            }
             cached.clear();
         } finally {
             lock.writeLock().unlock();
@@ -378,10 +409,10 @@ public class Cache<T> {
     /**
      * This class stores any relevant data for cached objects. It is for internal use in Caches.
      * <p>
-     * If you want to access the stored object without possible impacts on the cache functionality,
-     * you should access the stored object via {@link #peek()} instead of {@link #use()}.
-     * For example when using {@link Cache#stream()}
-     * </p>
+     * In general, it is recommended to use {@link #use()} to access the wrapped object.<p>
+     * But in some cases (like debugging or something) also {@link #peek()}
+     * can be used so objects can be inspected without affecting expiration or index.
+     * This means the used object will behave as no access would have taken place.
      *
      * @param <T> The type of the object the class instance stores.
      */
@@ -411,10 +442,15 @@ public class Cache<T> {
         }
 
         /**
-         * Returns the object stored in this {@code CachedObject}
-         * but other than {@link #use()} this won't affect functions like
-         * {@link CacheBuilder#indexExpireAfter(int)} or {@link CacheBuilder#temporalExpirationOnlyWhenUnused(boolean)},
-         * because nothing else will be done except of returning the actual object stored in this {@code CachedObject}.
+         * Returns the object stored in this {@code CachedObject}.
+         *
+         * <p>
+         * Use to inspect objects without affecting expiration or index.
+         * </p>
+         *
+         * Other than {@link #use()} this won't affect the objects last-used-time and index.
+         * This can cause the cache to behave differently than expected.<br>
+         * This method is intended only for debugging purposes or internal functionality.
          *
          * @return the core object stored by this {@code CachedObject}
          */
@@ -424,10 +460,13 @@ public class Cache<T> {
 
         /**
          * Returns the object stored in this {@code CachedObject}.
-         * It also sets a new {@link #lastUsed} time and resets this object index.<br>
-         * This is necessary for {@link CacheBuilder#indexExpireAfter(int)}
-         * and {@link CacheBuilder#temporalExpirationOnlyWhenUnused(boolean)} to work as intended.
+         * It also sets a new {@link #lastUsed} time and resets this object index.
+         *
          * <p>
+         * This is necessary so cache functionality like for example {@link CacheBuilder#indexExpireAfter(int)}
+         * or {@link CacheBuilder#temporalExpirationOnlyWhenUnused(boolean)} works as intended.
+         * </p>
+         *
          * Resetting the index of an object prevents {@link CacheBuilder#indexExpireAfter(int)}
          * from expire objects which got fetched recently.
          *
@@ -441,7 +480,7 @@ public class Cache<T> {
         }
 
         /**
-         * Resets the objects index in the cache.
+         * Resets the object index in the cache.
          * This is used in {@link #use()} to provide correct functionality of {@link CacheBuilder#indexExpireAfter(int)}.
          */
         public void resetIndex() {
@@ -455,7 +494,7 @@ public class Cache<T> {
         }
 
         /**
-         * By calling this, the stored object will count as expired and will maybe be deleted by the cache stored in.
+         * By calling this, the stored object will count as expired and may be deleted by the cache it's stored in.
          */
         protected void expire() {
             cache.listeners.forEach(lstnr -> lstnr.onCachedObjectExpire(this));
@@ -478,7 +517,7 @@ public class Cache<T> {
     }
 
     /**
-     * This class is to build a {@link Cache} instance.
+     * Builder class to build a {@link Cache} instance.
      *
      * @param <T> The type of objects to be stored in the cache
      */
