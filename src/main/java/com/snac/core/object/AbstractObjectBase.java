@@ -228,8 +228,8 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
     protected void onPositionChanged(double oldX, double oldY) {
         updateAttachments(oldX, oldY, getPosition().getX(), getPosition().getY());
         if (manager == null) {
-            log.warn("Object manager is null. Make sure also attached objects are added to a manager.");
-            return;
+            throw new IllegalStateException(("Object manager of this object (ID = %s) is null. Please remember:" +
+                    " Also attached objects needs to be added to an valid object manager").formatted(getId()));
         }
         if (manager.getRenderer().getWindowWidth() <= -1) {
             return;

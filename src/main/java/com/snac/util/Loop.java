@@ -99,11 +99,9 @@ public class Loop {
      */
     public void startTickLoop(int targetTPS, BiConsumer<Integer, Double> action) {
         if (running) {
-            log.error("This loop instance is already in use. Maybe a frame loop is running? Stop this loop first!");
-            return;
-        } else {
-            running = true;
+            throw new IllegalStateException("Failed to start tick loop. This Loop instance is already in use");
         }
+        running = true;
 
         execute(() -> {
             final var fixedDelta = 1.0 / targetTPS;
@@ -167,11 +165,10 @@ public class Loop {
      */
     public Loop startFrameLoop(int targetFPS, BiConsumer<Integer, Double> action) {
         if (running) {
-            log.error("This loop instance is already in use. Maybe a tick loop is running? Stop this loop first!");
-            return this;
-        } else {
-            running = true;
+            throw new IllegalStateException("Failed to start frame loop. This Loop instance is already in use");
         }
+
+        running = true;
 
         execute(() -> {
             final var frameDuration = 1.0D / targetFPS;
@@ -222,8 +219,7 @@ public class Loop {
      */
     public void stop() {
         if (!running) {
-            log.info("Can't stop loop. Loop isn't running!");
-            return;
+            throw new IllegalStateException("Failed to stop loop. This Loop instance is not running");
         }
         running = false;
         log.info("Stopping loop");
