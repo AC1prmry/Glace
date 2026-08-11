@@ -61,6 +61,8 @@ import java.util.stream.Stream;
  * </ul>
  *
  * @param <T> the type of objects to be stored in the cache
+ *
+ * TODO: #addWithExpiration() -> Sets object-specific expiration time
  */
 @Getter
 @Slf4j
@@ -93,12 +95,12 @@ public class Cache<T> {
      * <p>
      * Please use {@link CacheBuilder} for constructing cache instances.
      *
-     * @param expiresAfter                     The duration after which an object will expire. Disable with values like 0 or lower
-     * @param expireTimeUnit                   The time unit corresponding to {@code expiresAfter}
-     * @param deleteAfterExpiration            Whether expired objects should be automatically removed from the cache
+     * @param expiresAfter The duration after which an object will expire. Disable with values like 0 or lower
+     * @param expireTimeUnit The time unit corresponding to {@code expiresAfter}
+     * @param deleteAfterExpiration Whether expired objects should be automatically removed from the cache
      * @param temporalExpirationOnlyWhenUnused If true, the expiration time is dependent on the last time the object got used instead of the time it got added
-     * @param oldIndexExpire                   Whether entries with outdated indexes should expire
-     * @param indexExpireAfter                 The index threshold after which old entries should expire
+     * @param oldIndexExpire Whether entries with outdated indexes should expire
+     * @param indexExpireAfter The index threshold after which old entries should expire
      */
     protected Cache(int expiresAfter, TimeUnit expireTimeUnit, boolean deleteAfterExpiration,
                     boolean temporalExpirationOnlyWhenUnused, boolean oldIndexExpire, int indexExpireAfter) {
@@ -168,7 +170,6 @@ public class Cache<T> {
             }
         }
 
-
         if (isOldIndexesExpire()) {
             lock.readLock().lock();
             try {
@@ -180,14 +181,16 @@ public class Cache<T> {
                 }
 
                 var targetExpirations = ueIndexes - getIndexExpireAfter();
-                var expired = 0;
+                if (targetExpirations >= 0) {
+                    var expired = 0;
 
-                var it = cached.iterator();
-                while (it.hasNext() && expired < targetExpirations) {
-                    var obj = it.next();
-                    if (!obj.isExpired()) {
-                        obj.expire();
-                        expired++;
+                    var it = cached.iterator();
+                    while (it.hasNext() && expired < targetExpirations) {
+                        var obj = it.next();
+                        if (!obj.isExpired()) {
+                            obj.expire();
+                            expired++;
+                        }
                     }
                 }
             } finally {
@@ -218,24 +221,44 @@ public class Cache<T> {
     }
 
     /**
-     * Get a cached object from its key.
+     * Get an object from its key as {@link CachedObject}.
+     *
+     * <p>
+     * Using write-lock instead of read-lock is intended to prevent deadlock
+     * -> If the object is directly fetched when found via {@link CachedObject#use()} (like {@link #get(String)} does)
+     * the object index will get reset with ({@link CachedObject#resetIndex()} which use a write lock.<br>
+     * In this case (or similar) using a read-lock would block the write-lock in {@link CachedObject#resetIndex()}
+     * leading to a deadlock
+     * </p>
      *
      * @param key The key of the object
-     * @return the object of this key, or {@code null} if the key doesn't exist
+     * @return the object of this key as {@link CachedObject}, or {@code null} if the key doesn't exist
      */
     @Nullable
-    public T get(String key) {
+    public CachedObject<T> getCachedObject(String key) {
         lock.readLock().lock();
         try {
             for (var obj : cached) {
                 if (obj.getKey().equals(key)) {
-                    return obj.use();
+                    return obj;
                 }
             }
         } finally {
             lock.readLock().unlock();
         }
         return null;
+    }
+
+    /**
+     * Get an object from its key.
+     *
+     * @param key The key of the object
+     * @return the object of this key, or {@code null} if the key doesn't exist
+     */
+    @Nullable
+    public T get(String key) {
+        var cObj = getCachedObject(key);
+        return cObj == null ? null : cObj.use();
     }
 
     /**
@@ -407,6 +430,36 @@ public class Cache<T> {
     }
 
     /**
+     * This method can be called to shut down (or deactivate) this Cache.
+     * Cache logic will stop working as {@link #tick()} won't be called anymore.
+     * <p>
+     *     The cache can be reactivated by calling {@link #run()}
+     * </p>
+     */
+    public void shutdown() {
+        if (!CacheBuilder.caches.remove(this)) {
+            throw new IllegalStateException("Can't shut down a Cache which isn't running.");
+        }
+        log.info("Cache shut down");
+    }
+
+    /**
+     * Registers this cache instance. Only after the cache got registered {@link #tick()} will be called,
+     * allowing it to function correctly.
+     * <br>
+     * This method is called automatically when the cache is created.
+     * <br>
+     * Calling this method manually is normally only needed when the cache got shut down via {@link #shutdown()}
+     * and needs to be reactivated.
+     */
+    public void run() {
+        if (!CacheBuilder.caches.add(this)) {
+            throw new IllegalStateException("This cache is already running.");
+        }
+        log.info("Cache activated");
+    }
+
+    /**
      * This class stores any relevant data for cached objects. It is for internal use in Caches.
      * <p>
      * In general, it is recommended to use {@link #use()} to access the wrapped object.<p>
@@ -522,6 +575,7 @@ public class Cache<T> {
      * @param <T> The type of objects to be stored in the cache
      */
     public static class CacheBuilder<T> {
+        protected static Loop loop;
         protected static final Set<Cache<?>> caches = Collections.synchronizedSet(new HashSet<>());
         protected int expiresAfter = -1;
         protected TimeUnit expireTimeUnit = TimeUnit.MINUTES;
@@ -539,12 +593,19 @@ public class Cache<T> {
          * This is necessary to provide full cache functionality.
          */
         protected static void startTicking() {
-            new Loop(true, "Caching-Thread", null)
-                    .startTickLoop(20, (tps, deltaTime) -> {
-                        synchronized (caches) {
-                            caches.forEach(Cache::tick);
-                        }
-                    });
+            loop = new Loop(true, "Glace Caching", null, true);
+            loop.startTickLoop(20, (tps, deltaTime) -> {
+                synchronized (caches) {
+                    caches.forEach(Cache::tick);
+                }
+            });
+        }
+
+        /**
+         * Shuts down the entire caching thread.
+         */
+        public static void shutdown() {
+            loop.stop();
         }
 
         /**
@@ -629,8 +690,7 @@ public class Cache<T> {
                     temporalExpirationOnlyWhenUnused,
                     indexExpireAfter > 0,
                     indexExpireAfter);
-            caches.add(cache);
-            log.info("Initialized new cache");
+            cache.run();
             return cache;
         }
     }

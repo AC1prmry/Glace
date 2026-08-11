@@ -72,6 +72,8 @@ public class ObjectManager<I> {
             log.info("Added new GameObject of type '{}' with ID '{}'",
                     gameObject.getClass().getSimpleName(),
                     gameObject.getId());
+        } else {
+            throw new IllegalStateException("The GameObject was already added.");
         }
 
         return this;
@@ -103,6 +105,8 @@ public class ObjectManager<I> {
             log.info("Removed GameObject of type '{}' with ID '{}'",
                     gameObject.getClass().getSimpleName(),
                     gameObject.getId());
+        } else {
+            throw new IllegalStateException("Non-existent GameObjects cannot be destroyed.");
         }
 
         return this;
@@ -205,7 +209,7 @@ public class ObjectManager<I> {
 
     /**
      * Get a stream of all game objects.
-     *
+     * TODO: Replace with getter of gameobjects as unmodifable list
      * @return A stream of all game objects
      */
     public Stream<AbstractObjectBase<I>> streamObjects() {
@@ -249,7 +253,7 @@ public class ObjectManager<I> {
      * Get a list of all game objects managed by this manager.
      * This list is a copy of the internal list,
      * so modifications to the returned list will not affect the internal list.
-     *
+     * TODO: See #streamObjects todo
      * @return A list of all game objects managed by this manager
      */
     public List<AbstractObjectBase<?>> getGameObjects() {

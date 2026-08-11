@@ -41,7 +41,7 @@ public final class Glace {
         start(20);
     }
 
-    public void start(int tps) {
+    public void start(int targetTps) {
         if (started) {
             log.warn("Glace already started. Ignoring start request.");
             return;
@@ -51,7 +51,7 @@ public final class Glace {
 
         shutdownHooks = Collections.synchronizedSet(new HashSet<>());
 
-        loop = new Loop(true, "Glace", () -> shutdownHooks.forEach(Runnable::run));
+        loop = new Loop(true, "Glace", () -> shutdownHooks.forEach(Runnable::run), false);
 
         imageLoader = new SwingImageLoader();
         renderer = new SwingRenderer(60, null, 2);
@@ -59,7 +59,14 @@ public final class Glace {
         animationHandler = new AnimationHandler<>(renderer);
 
         log.info("Initialized");
-        startGameLoop(tps);
+        startGameLoop(targetTps);
+    }
+
+    public void shutdown() {
+        try {
+            Loop.getRunningLoops().forEach(Loop::stop);
+        } catch (IllegalStateException ignored) {}
+        System.exit(0);
     }
 
     private Glace() {
