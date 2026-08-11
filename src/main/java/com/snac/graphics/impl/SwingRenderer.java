@@ -62,7 +62,7 @@ public class SwingRenderer implements Renderer<BufferedImage> {
         this.maxFps = maxFPS <= 0 ? 60 : maxFPS;
         this.buffers = Math.max(buffers, 1);
 
-        this.loop = new Loop(true, "Swing-Rendering", null);
+        this.loop = new Loop(true, "Swing-Rendering", null, false);
 
         renderLoopAction = (fps, deltaTime) -> {
             this.fps = fps;

@@ -9,10 +9,6 @@ import io.github.humbleui.skija.impl.Stats;
 import lombok.Getter;
 import lombok.Setter;
 import org.jetbrains.annotations.NotNull;
-
-import static org.lwjgl.glfw.Callbacks.*;
-import static org.lwjgl.glfw.GLFW.*;
-
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFWErrorCallback;
 import org.lwjgl.opengl.GL;
@@ -20,6 +16,9 @@ import org.lwjgl.opengl.GL;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.BiConsumer;
+
+import static org.lwjgl.glfw.Callbacks.glfwFreeCallbacks;
+import static org.lwjgl.glfw.GLFW.*;
 
 /**
  * Implementation of {@link Renderer} based on Skija and LWJGL. See {@link Renderer}-Interface for more information.
@@ -117,7 +116,7 @@ public class SkijaRenderer implements Renderer {
     }
 
     private void startRenderLoop() {
-        var loop = new Loop(true, "Glace-Rendering", null);
+        var loop = new Loop(true, "Glace-Rendering", null, false);
 
         var initRun = new Runnable() {
             @Override

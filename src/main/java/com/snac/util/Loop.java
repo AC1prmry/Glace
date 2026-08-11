@@ -5,7 +5,9 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.concurrent.Executors;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.function.BiConsumer;
 
 /**
@@ -26,8 +28,8 @@ import java.util.function.BiConsumer;
  *       the loop does not attempt to maintain strict simulation timing.
  *       See method documentation for an example</li>
  * </ul>
- *
- * <h3>Why multiple loops?</h3>
+ * <br>
+ * <b>Why multiple loop types?</b>
  * <p>
  * Simulation and rendering have different timing requirements. Simulation must
  * process every tick to remain deterministic and avoid inconsistent physics,
@@ -45,32 +47,53 @@ import java.util.function.BiConsumer;
 @Getter
 public class Loop {
     private static int loopCount = 1;
+    @Getter
+    protected static Set<Loop> runningLoops = Collections.synchronizedSet(new HashSet<>());
     protected final int id;
     protected volatile boolean running;
     protected volatile double alpha;
     @Setter
     protected boolean runOnThread;
     protected final String name;
-    protected final Runnable shutdownHook;
+    @Setter
+    protected Runnable shutdownHook;
+    @Setter
+    protected boolean daemon;
+    @Nullable
+    protected Thread currentThread;
 
     /**
      * Loop constructor. Does constructor stuff.
      *
-     * @param runOnThread Set to {@code true}, the loop will run on a separate thread.
-     *                    When set to {@code false}, this loop will run on the thread it got started on
+     * @param runOnThread  Set to {@code true}, the loop will run on a separate thread.
+     *                     When set to {@code false}, this loop will run on the thread it got started on
      * @param name The name for this loop. Will also be used as thread name (if this loop runs on a thread (set via {@code runOnThread}))
      * @param shutdownHook This runnable gets called when the loop stops
+     * @param daemon When set to {@code true} the thread this loop runs on
+     *               (if {@link #runOnThread} is set to {@code true}) will be marked as daemon thread.
+     *               See {@link Thread#setDaemon(boolean)} for more information
      */
-    public Loop(boolean runOnThread, @Nullable String name, @Nullable Runnable shutdownHook) {
-        id = loopCount;
+    public Loop(boolean runOnThread, @Nullable String name, @Nullable Runnable shutdownHook, boolean daemon) {
+        this.id = loopCount;
         this.running = false;
         this.alpha = 0;
         this.runOnThread = runOnThread;
         this.name = name == null ? "Loop-" + loopCount : name;
         this.shutdownHook = shutdownHook == null ? () -> {} : shutdownHook;
+        this.daemon = daemon;
 
         log.info("Creating new loop. Count: '{}'", loopCount);
         loopCount++;
+    }
+
+    /**
+     * Second Loop constructor with fewer parameters.
+     *
+     * @param runOnThread  Set to {@code true}, the loop will run on a separate thread.
+     *                     When set to {@code false}, this loop will run on the thread it got started on
+     */
+    public Loop(boolean runOnThread) {
+        this(runOnThread, null, null, false);
     }
 
     /**
@@ -95,7 +118,7 @@ public class Loop {
      * }</pre>
      *
      * @param targetTPS Sets the target <b>T</b>icks-<b>P</b>er-<b>S</b>econd (how often this loop (trys to) callback)
-     * @param action The action you want to execute every tick
+     * @param action    The action you want to execute every tick
      */
     public void startTickLoop(int targetTPS, BiConsumer<Integer, Double> action) {
         if (running) {
@@ -161,7 +184,7 @@ public class Loop {
      * }</pre>
      *
      * @param targetFPS Sets the target <b>F</b>rames-<b>P</b>er-<b>S</b>econd (how often this loop (trys to) callback)
-     * @param action The action you want to execute every frame
+     * @param action    The action you want to execute every frame
      */
     public Loop startFrameLoop(int targetFPS, BiConsumer<Integer, Double> action) {
         if (running) {
@@ -215,7 +238,7 @@ public class Loop {
     }
 
     /**
-     * Stops running loops.
+     * Stops running loop.
      */
     public void stop() {
         if (!running) {
@@ -233,14 +256,19 @@ public class Loop {
             log.info("Executing loop '{}'", name);
             runnable.run();
             shutdownHook.run();
+            runningLoops.remove(this);
             log.info("Loop '{}' finished", name);
         };
 
         if (isRunOnThread()) {
-            Executors.newSingleThreadExecutor((r) -> new Thread(r, name))
-                    .execute(finalRun);
+            var thread = new Thread(finalRun, name);
+            this.currentThread = thread;
+            thread.setDaemon(isDaemon());
+            thread.start();
         } else {
+            this.currentThread = Thread.currentThread();
             finalRun.run();
         }
+        runningLoops.add(this);
     }
 }
