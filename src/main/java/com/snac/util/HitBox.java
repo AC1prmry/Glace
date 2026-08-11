@@ -66,7 +66,7 @@ public class HitBox extends Attachable<HitBox> implements Serializable {
      * @return {@code true} if these two hitboxes touches each other, otherwise {@code false}
      */
     public boolean intersects(HitBox hitBox) {
-        return intersects(getX(), getY(), hitBox.getWidth(), hitBox.getHeight());
+        return intersects(hitBox.getX(), hitBox.getY(), hitBox.getWidth(), hitBox.getHeight());
     }
 
     /**
