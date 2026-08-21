@@ -30,7 +30,6 @@ import java.util.function.Consumer;
  * </p>
  *
  * @param <T> the concrete type extending this class (so subclasses can reference themselves)
- * TODO: Testssss
  */
 @Slf4j
 @SuppressWarnings("unchecked")
@@ -97,7 +96,11 @@ public abstract class Attachable<T extends Attachable<T>> implements Serializabl
      * @param attachable the object to attach
      */
     public void addAttachment(T attachable) {
-        if (attachable.isAttached() || attachable == this) {
+        if (attachable == this) {
+            throw new IllegalArgumentException("Can't attach an object to itself.");
+        }
+
+        if (attachable.isAttached()) {
             assert attachable.getParent() != null;
             var parent = attachable.getParent().getClass().getSimpleName();
 
@@ -113,7 +116,7 @@ public abstract class Attachable<T extends Attachable<T>> implements Serializabl
     /**
      * Detaches a specific attached object.
      * <p>
-     * Removing an object which isn't even attached will throw a {@link IllegalArgumentException}
+     * Removing an object that isn't even attached will throw a {@link IllegalArgumentException}
      * </p>
      *
      * @param attachable the attachable to remove
@@ -177,7 +180,6 @@ public abstract class Attachable<T extends Attachable<T>> implements Serializabl
     }
 
     /**
-     * TODO: No completable future
      * Returns the topmost parent (the root) in the attachment hierarchy.
      * <p>
      * If the object is attached to another object, the method walks up the chain of parents
