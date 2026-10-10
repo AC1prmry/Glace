@@ -20,6 +20,7 @@ import java.util.Set;
 //TODO: Make default implementations easier to use (interpolation, ...)
 //TODO: Modules
 //TODO: Package info
+//TODO: General Doc improvements
 @Getter
 @Setter
 @Slf4j
@@ -36,6 +37,7 @@ public final class Glace {
     @Setter(AccessLevel.NONE) private boolean started = false;
     private final LocalDateTime startTime;
     private Set<Runnable> shutdownHooks;
+    @Setter private Runnable tickHook;
 
     public void start() {
         start(20);
@@ -81,6 +83,8 @@ public final class Glace {
     public void tick(double deltaTime) {
         objectManager.tick(deltaTime);
         animationHandler.tick();
+
+        if (tickHook != null) tickHook.run();
     }
 
     private void startGameLoop(int tps) {

@@ -146,14 +146,28 @@ public class Vector2D implements Serializable {
     }
 
     /**
+     * Boolean to check if {@link #set(double, double)} is called the first time.
+     * If this case is true, old X and Y is set to the initial value.
+     * <br>
+     * If we ignored this case, bugs could occur in methods which use the old X and Y Values,
+     * for example interpolation -> If old X and Y gets initialized with zero, we would get wrong results.
+     */
+    private boolean firstCall = true;
+    /**
      * Sets the x and y components of this vector.
      * This method can also get overriding to implement actions on change.
      * @param x new x value
      * @param y new y value
      */
     public synchronized void set(double x, double y) {
-        oldX = this.x;
-        oldY = this.y;
+        if (firstCall) {
+            oldX = x;
+            oldY = y;
+            firstCall = false;
+        } else {
+            oldX = this.x;
+            oldY = this.y;
+        }
         this.x = x;
         this.y = y;
     }
@@ -327,6 +341,7 @@ public class Vector2D implements Serializable {
      *               (if the loop is running, otherwise it will return 0)
      * @return The interpolated X position
      */
+    //TODO: Easier Alpha Use
     public float getInterpolatedX(float alpha) {
         return Renderer.getInterpolatedX((float) getOldX(), (float) getX(), alpha);
     }

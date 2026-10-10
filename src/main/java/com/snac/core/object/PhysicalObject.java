@@ -3,16 +3,21 @@ package com.snac.core.object;
 import com.snac.util.HitBox;
 import com.snac.util.Vector2D;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.Serial;
+
+import static java.lang.Math.abs;
 
 @Slf4j
 @Getter
 public abstract class PhysicalObject<I> extends AbstractObjectBase<I> {
     @Serial
     private static final long serialVersionUID = 1L;
+    @Setter
+    private float slowFactor = 0.9f;
 
     private final Vector2D velocity;
 
@@ -28,10 +33,20 @@ public abstract class PhysicalObject<I> extends AbstractObjectBase<I> {
 
     @Override
     protected void onUpdate(double deltaTime) {
-        position.set(position.getX() + (velocity.getX() * deltaTime), position.getY() + (velocity.getY() * deltaTime));
-        if (velocity.getX() != 0) {
-            var slowFactor = velocity.getX() * 0.3;
-            velocity.set(velocity.getX() * -slowFactor, velocity.getY());
+        if (!velocity.isZero()) {
+            position.set(position.getX() + velocity.getX(), position.getY() + velocity.getY());
+            velocity.set(velocity.getX() * slowFactor, velocity.getY() * slowFactor);
+
+            if (abs(velocity.getX()) < 0.01) {
+                velocity.set(0, velocity.getY());
+            }
+            if (abs(velocity.getY()) < 0.01) {
+                velocity.set(velocity.getX(), 0);
+            }
+        }
+        if (!isOnGround()) {
+            if (position.getY() < 400) //<----- Remove Later
+                velocity.add(0, 3);
         }
         //checkCollisions();
     }
@@ -60,7 +75,7 @@ public abstract class PhysicalObject<I> extends AbstractObjectBase<I> {
 
     //Only use for single calls or if performance doesn't matter
     public double distanceSwept(double delta, boolean isXAxis, HitBox hitBox) {
-        double absDelta = Math.abs(delta);
+        double absDelta = abs(delta);
         double posX = getPosition().getX();
         double posY = getPosition().getY();
 
@@ -81,7 +96,7 @@ public abstract class PhysicalObject<I> extends AbstractObjectBase<I> {
         int boxIndex = -1;
 
         //Calculate only once
-        double absDelta = Math.abs(delta);
+        double absDelta = abs(delta);
         double posX = getPosition().getX();
         double posY = getPosition().getY();
 
@@ -115,7 +130,7 @@ public abstract class PhysicalObject<I> extends AbstractObjectBase<I> {
         double nearestDist = Double.MAX_VALUE;
         AbstractObjectBase<?> nearestObject = null;
 
-        double absDelta = Math.abs(delta);
+        double absDelta = abs(delta);
         double posX = getPosition().getX();
         double posY = getPosition().getY();
 
