@@ -17,8 +17,6 @@ import java.awt.image.BufferedImage;
 import java.util.function.BiConsumer;
 
 /**
- * TODO: VSync??
- * TODO: Better docs
  * Implementation of {@link Renderer} based on Swing. See {@link Renderer}-Interface for more information.
  * <p>
  * The easiest way to modify the rendering process is by using {@link #setRenderLoopAction(BiConsumer)}<br>

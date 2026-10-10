@@ -341,7 +341,6 @@ public class Vector2D implements Serializable {
      *               (if the loop is running, otherwise it will return 0)
      * @return The interpolated X position
      */
-    //TODO: Easier Alpha Use
     public float getInterpolatedX(float alpha) {
         return Renderer.getInterpolatedX((float) getOldX(), (float) getX(), alpha);
     }

@@ -61,8 +61,6 @@ import java.util.stream.Stream;
  * </ul>
  *
  * @param <T> the type of objects to be stored in the cache
- *
- * TODO: #addWithExpiration() -> Sets object-specific expiration time
  */
 @Getter
 @Slf4j

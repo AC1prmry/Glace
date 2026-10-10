@@ -17,10 +17,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-//TODO: Make default implementations easier to use (interpolation, ...)
-//TODO: Modules
-//TODO: Package info
-//TODO: General Doc improvements
 @Getter
 @Setter
 @Slf4j
