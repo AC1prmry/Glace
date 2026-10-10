@@ -33,7 +33,7 @@ import java.util.function.Consumer;
  * To provide functionality for your game objects, you need to add them to a valid {@link ObjectManager} instance.
  *
  * <p>
- * <b>Note:</b> Remove unused objects via {@link ObjectManager#destroyGameObject(AbstractObjectBase)}
+ * <b>Note:</b> Remove unused objects via {@link ObjectManager#destroyObject(AbstractObjectBase)}
  * or reuse them to save resources.
  * <br>Using a {@link com.snac.data.runtime.caching.Cache Cache} can help removing old objects automatically.
  * </p>
@@ -163,7 +163,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
 
     /**
      * Manager responsible for the object's lifecycle and orchestration.<p>
-     * May be {@code null} if this object wasn't added to {@link ObjectManager} via {@link ObjectManager#addGameObject(AbstractObjectBase)}
+     * May be {@code null} if this object wasn't added to {@link ObjectManager} via {@link ObjectManager#addObject(AbstractObjectBase)}
      */
     @Nullable
     private ObjectManager<I> manager;

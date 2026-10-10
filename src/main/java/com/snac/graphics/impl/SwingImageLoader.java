@@ -1,7 +1,6 @@
 package com.snac.graphics.impl;
 
 import com.snac.graphics.ImageLoader;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.imageio.ImageIO;

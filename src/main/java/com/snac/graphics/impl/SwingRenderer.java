@@ -21,7 +21,7 @@ import java.util.function.BiConsumer;
  * TODO: Better docs
  * Implementation of {@link Renderer} based on Swing. See {@link Renderer}-Interface for more information.
  * <p>
- * The easiest way to modify the rendering process is by using {@link #setPreRender(Runnable)}, {@link #setRenderLoopAction(BiConsumer)} or {@link #setPostRender(Runnable)}<br>
+ * The easiest way to modify the rendering process is by using {@link #setRenderLoopAction(BiConsumer)}<br>
  * Otherwise, you can extend this class or write your own renderer with the {@link Renderer Renderer interface}
  * </p>
  * <p>

@@ -118,7 +118,8 @@ public class Loop {
      * }</pre>
      *
      * @param targetTPS Sets the target <b>T</b>icks-<b>P</b>er-<b>S</b>econd (how often this loop (trys to) callback)
-     * @param action    The action you want to execute every tick
+     * @param action The action you want to execute every tick.
+     *              The BiConsumer holds the current FPS as Integer and fixed delta as double
      */
     public void startTickLoop(int targetTPS, BiConsumer<Integer, Double> action) {
         if (running) {
@@ -184,7 +185,7 @@ public class Loop {
      * }</pre>
      *
      * @param targetFPS Sets the target <b>F</b>rames-<b>P</b>er-<b>S</b>econd (how often this loop (trys to) callback)
-     * @param action    The action you want to execute every frame
+     * @param action The action you want to execute every frame The BiConsumer holds the current FPS as Integer and fixed delta as double
      */
     public Loop startFrameLoop(int targetFPS, BiConsumer<Integer, Double> action) {
         if (running) {
