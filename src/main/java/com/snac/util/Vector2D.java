@@ -245,8 +245,7 @@ public class Vector2D implements Serializable {
         double dy = getY() - y;
         return Math.sqrt(dx * dx + dy * dy);
     }
-
-
+    
     /**
      * Calculates the squared Euclidean distance between this vector and another vector.
      * Using the squared distance avoids the computational cost of a square root operation

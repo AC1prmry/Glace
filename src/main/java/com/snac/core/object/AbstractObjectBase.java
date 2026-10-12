@@ -168,6 +168,10 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
     @Nullable
     private ObjectManager<I> manager;
 
+    private long lastTickTime = 0;
+
+    private long tickStartTimestamp = System.nanoTime();
+
     /**
      * Creates an object with a default position (0|0), default direction {@link Direction#RIGHT},
      * and minimum dimensions (20x20).
@@ -306,6 +310,9 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
     void internalUpdate(double deltaTime) {
         if (disabled) return;
         onUpdate(deltaTime);
+
+        lastTickTime = System.nanoTime() - tickStartTimestamp;
+        tickStartTimestamp = System.nanoTime();
     }
 
     /**
@@ -362,6 +369,18 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
             showHitBox = false;
             log.info("Hiding hit box of object {}", getId());
         }
+    }
+
+    public float getAlpha() {
+        return (float) (System.nanoTime() - tickStartTimestamp) / lastTickTime;
+    }
+
+    public float getInterpolatedX() {
+        return getPosition().getInterpolatedX(getAlpha());
+    }
+
+    public float getInterpolatedY() {
+        return getPosition().getInterpolatedY(getAlpha());
     }
 
     /**

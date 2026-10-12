@@ -67,7 +67,7 @@ public interface Brush<I> {
     void drawLine(int x1, int y1, int x2, int y2);
 
     /**
-     * Draws an polygon
+     * Draws a polygon
      *
      * @param points Every keypoint
      * @param filled Set to {@code true} the polygon will be filled, otherwise only the outline will get drawn
