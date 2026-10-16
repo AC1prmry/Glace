@@ -156,6 +156,12 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
     @Nullable
     private volatile I image;
 
+    @Setter
+    private volatile int imageWidth;
+
+    @Setter
+    private volatile int imageHeight;
+
     /**
      * The direction of the object. Also see {@link Direction}
      */
@@ -274,7 +280,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
             brush.drawImage(getImage(),
                     Math.round(getInterpolatedX()),
                     Math.round(getInterpolatedY()),
-                    getWidth(), getHeight());
+                    getImageWidth(), getImageHeight());
         }
 
         if (showHitBox) {
@@ -388,6 +394,14 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
 
     public float getInterpolatedY() {
         return getPosition().getInterpolatedY(getAlpha());
+    }
+
+    public int getImageWidth() {
+        return imageWidth <= 0 || imageHeight <= 0 ? getWidth() : imageWidth;
+    }
+
+    public int getImageHeight() {
+        return imageWidth <= 0 || imageHeight <= 0 ? getHeight() : imageHeight;
     }
 
     /**
