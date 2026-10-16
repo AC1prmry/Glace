@@ -270,6 +270,13 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
      */
     @Override
     public void render(Brush<I> brush) {
+        if (visible() && getImage() != null) {
+            brush.drawImage(getImage(),
+                    Math.round(getInterpolatedX()),
+                    Math.round(getInterpolatedY()),
+                    getWidth(), getHeight());
+        }
+
         if (showHitBox) {
             brush.drawRectangle(getHitBox().getXRound(), getHitBox().getYRound(), getHitBox().getWidthRound(), getHitBox().getHeightRound(), false);
             getHitBox().childAction(child -> {
