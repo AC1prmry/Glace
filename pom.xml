@@ -68,6 +68,12 @@
             <version>4.8.181</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.github.AC1prmry</groupId>
+            <artifactId>Filemanager</artifactId>
+            <version>v1.1.6</version>
+        </dependency>
+
         <!-- LWJGL dependencies -->
         <dependency>
             <groupId>org.lwjgl</groupId>

@@ -160,9 +160,9 @@ public class ObjectManager<I> {
      * Check if an object with a given ID exists.
      *
      * @param id The ID to check
-     * @return {@code true} if the UUID exists, otherwise {@code false}
+     * @return {@code true} if the ID exists, otherwise {@code false}
      */
-    public boolean containsObjectFromUUID(long id) {
+    public boolean containsObjectWithID(long id) {
         return getObjectFromID(id).isPresent();
     }
 
@@ -191,10 +191,10 @@ public class ObjectManager<I> {
     }
 
     /**
-     * Get a object from a given UUID.
+     * Get an object from a given ID.
      *
      * @param id The unique object id to search for
-     * @return an {@link Optional} containing the object with the given UUID, or nothing if no such object exists
+     * @return an {@link Optional} containing the object with the given ID, or nothing if no such object exists
      */
     public Optional<AbstractObjectBase<I>> getObjectFromID(long id) {
         synchronized (objects) {
