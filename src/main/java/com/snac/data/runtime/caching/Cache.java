@@ -171,24 +171,14 @@ public class Cache<T> {
         if (isOldIndexesExpire()) {
             lock.readLock().lock();
             try {
-                int ueIndexes = 0;
-                for (var obj : cached) {
+                var it = cached.iterator();
+                var index = 0;
+                while (it.hasNext() && index < getIndexExpireAfter() - 1) {
+                    index++;
+
+                    var obj = it.next();
                     if (!obj.isExpired()) {
-                        ueIndexes++;
-                    }
-                }
-
-                var targetExpirations = ueIndexes - getIndexExpireAfter();
-                if (targetExpirations >= 0) {
-                    var expired = 0;
-
-                    var it = cached.iterator();
-                    while (it.hasNext() && expired < targetExpirations) {
-                        var obj = it.next();
-                        if (!obj.isExpired()) {
-                            obj.expire();
-                            expired++;
-                        }
+                        obj.expire();
                     }
                 }
             } finally {
@@ -542,6 +532,10 @@ public class Cache<T> {
             } finally {
                 cache.lock.writeLock().unlock();
             }
+        }
+
+        public void setUnexpired() {
+            expired = false;
         }
 
         /**

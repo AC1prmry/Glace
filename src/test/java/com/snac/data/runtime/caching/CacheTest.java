@@ -17,7 +17,7 @@ public class CacheTest {
     public void setUp() {
         this.cache = new Cache.CacheBuilder<Integer>()
                 .objectsExpireAfter(2, TimeUnit.SECONDS)
-                .deleteObjectsWhenExpired(true)
+                //.deleteObjectsWhenExpired(true)
                 .temporalExpirationOnlyWhenUnused(true)
                 .indexExpireAfter(2)
                 .build();
@@ -55,10 +55,12 @@ public class CacheTest {
 
     @Test
     public void testTemporalExpiration() throws InterruptedException {
-        TimeUnit.SECONDS.sleep(2);
+        TimeUnit.SECONDS.sleep(1);
         cache.get("test1");
         TimeUnit.SECONDS.sleep(1);
+        cache.get("test1");
+        TimeUnit.SECONDS.sleep(1);
+        System.err.println(cache.cached);
         assertEquals("Cache should contain only one entry", 1, cache.cached.size());
     }
-
 }
