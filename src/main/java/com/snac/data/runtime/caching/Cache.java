@@ -140,6 +140,24 @@ public class Cache<T> {
      * All registered {@link CacheListener} will be notified.
      */
     protected void tick() {
+        if (isOldIndexesExpire()) {
+            lock.readLock().lock();
+            try {
+                var it = cached.iterator();
+                var index = 0;
+                while (it.hasNext() && index < cached.size() - getIndexExpireAfter()) {
+                    var obj = it.next();
+                    if (!obj.isExpired()) {
+                        obj.expire();
+                    }
+
+                    index++;
+                }
+            } finally {
+                lock.readLock().unlock();
+            }
+        }
+
         if (getExpiresAfter() > 0) {
             lock.readLock().lock();
             try {
@@ -160,30 +178,13 @@ public class Cache<T> {
         }
 
         if (isDeleteAfterExpiration()) {
-            lock.writeLock().lock();
-            try {
-                cached.removeIf(CachedObject::isExpired);
-            } finally {
-                lock.writeLock().unlock();
-            }
-        }
-
-        if (isOldIndexesExpire()) {
-            lock.readLock().lock();
-            try {
-                var it = cached.iterator();
-                var index = 0;
-                while (it.hasNext() && index < getIndexExpireAfter() - 1) {
-                    index++;
-
-                    var obj = it.next();
-                    if (!obj.isExpired()) {
-                        obj.expire();
-                    }
+            cached.removeIf(obj -> {
+                if (obj.isExpired()) {
+                    listeners.forEach(lstnr -> lstnr.onCachedObjectRemove(obj));
+                    return true;
                 }
-            } finally {
-                lock.readLock().unlock();
-            }
+                return false;
+            });
         }
     }
 
@@ -375,10 +376,10 @@ public class Cache<T> {
      * statistics, or searching for specific entries.
      * </p>
      *
-     * <h3>Important Notes:</h3>
+     * <b>Important Notes:</b>
      * <ul>
      *   <li>
-     *     In this case it is reccommendet to use {@link CachedObject#peek()} instead of
+     *     In this case it is recommended to use {@link CachedObject#peek()} instead of
      *     {@link CachedObject#use()} to access objects.<br>
      *     As {@link CachedObject#peek()} won't affect the object's last-used-time and index,
      *     object lifetime or internal behavior in cache also won't be affected.

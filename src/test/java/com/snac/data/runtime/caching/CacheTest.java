@@ -17,8 +17,8 @@ public class CacheTest {
     public void setUp() {
         this.cache = new Cache.CacheBuilder<Integer>()
                 .objectsExpireAfter(2, TimeUnit.SECONDS)
-                //.deleteObjectsWhenExpired(true)
                 .temporalExpirationOnlyWhenUnused(true)
+                .deleteObjectsWhenExpired(true)
                 .indexExpireAfter(2)
                 .build();
         cache.add("test1", 6);
@@ -46,21 +46,29 @@ public class CacheTest {
     @Test
     public void testIndexExpiration() throws InterruptedException {
         cache.add("test3", 8);
-        TimeUnit.SECONDS.sleep(2);
+        TimeUnit.MILLISECONDS.sleep(200);
 
-        assertEquals("Cache should have only 2 unexpired entries",
-                2, cache.cached.stream().filter(e -> !e.expired).count());
-        assertTrue("Oldest entry should be removed first", cache.getCachedObject("test1").isExpired());
+            assertEquals("Cache should have only 2 unexpired entries",
+                    2, cache.cached.size());
+            assertTrue("Only first object should have been removed -> only second and third object remain",
+                    cache.contains("test3") && cache.contains("test2"));
     }
 
     @Test
     public void testTemporalExpiration() throws InterruptedException {
-        TimeUnit.SECONDS.sleep(1);
+        assertEquals("Objects should be still there before 2 seconds have passed",
+                2, cache.cached.stream().filter(e -> !e.expired).count());
+
+        TimeUnit.MILLISECONDS.sleep(1000);
+        assertEquals("One second has passed. Objects still shouldn't be expired",
+                2, cache.cached.stream().filter(e -> !e.expired).count());
+
+        cache.add("test3", 3);
         cache.get("test1");
-        TimeUnit.SECONDS.sleep(1);
-        cache.get("test1");
-        TimeUnit.SECONDS.sleep(1);
-        System.err.println(cache.cached);
-        assertEquals("Cache should contain only one entry", 1, cache.cached.size());
+
+        TimeUnit.MILLISECONDS.sleep(1100);
+        assertTrue("Two seconds has passed. Only objects which got used (#temporalExpirationOnlyWhenUnused is set)" +
+                " or added less than 2 seconds ago should remain.",
+                cache.cached.size() == 2 && cache.contains("test3") && cache.contains("test1"));
     }
 }
