@@ -35,6 +35,8 @@ public class Vector2D implements Serializable {
     private volatile double oldX;
     private volatile double oldY;
 
+    private volatile long lastUpdated;
+
     /**
      * Constructs a new Vector2D with the specified x and y components.
      *
@@ -46,6 +48,7 @@ public class Vector2D implements Serializable {
         this.y = y;
         this.oldX = x;
         this.oldY = y;
+        lastUpdated = System.nanoTime();
     }
 
     /**
@@ -54,10 +57,7 @@ public class Vector2D implements Serializable {
      * @param other the vector to copy
      */
     public Vector2D(Vector2D other) {
-        this.x = other.x;
-        this.y = other.y;
-        this.oldX = other.oldX;
-        this.oldY = other.oldY;
+        this(other.getX(), other.getY());
     }
 
     /**
@@ -151,11 +151,12 @@ public class Vector2D implements Serializable {
      * @param x new x value
      * @param y new y value
      */
-    public synchronized void set(double x, double y) {
+    public void set(double x, double y) {
         oldX = this.x;
         oldY = this.y;
         this.x = x;
         this.y = y;
+        lastUpdated = System.nanoTime();
     }
 
     /**

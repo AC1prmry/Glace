@@ -103,6 +103,9 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
     @Getter(AccessLevel.NONE)
     private volatile boolean visible;
 
+    @Setter
+    private volatile boolean moving;
+
     /**
      * Position of the object relative to the window the object is rendered on
      * (Also see the {@link com.snac.graphics.Renderer Renderer} you are using
@@ -156,7 +159,6 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
     @Nullable
     private volatile I image;
 
-    @Setter
     private volatile int imageWidth;
 
     @Setter
@@ -209,6 +211,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
         };
         this.direction = direction;
         this.disabled = false;
+        this.moving = false;
         this.visible = true;
         this.width = width < 1 ? 20 : width;
         this.height = height < 1 ? 20 : height;
@@ -224,7 +227,9 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
      * @param newX the new X-value the position is set to
      * @param newY the new Y-value the position is set to
      */
-    protected void onPositionChange(double newX, double newY) {}
+    protected void onPositionChange(double newX, double newY) {
+        moving = true;
+    }
 
     /**
      * Almost the same as {@link #onPositionChange(double, double)} but this method is invoked <b>after</b> the position changed.<br>
@@ -326,6 +331,12 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
 
         lastTickTime = System.nanoTime() - tickStartTimestamp;
         tickStartTimestamp = System.nanoTime();
+
+        var lastPositionUpdate = System.nanoTime() - getPosition().getLastUpdated();
+        var moving = lastPositionUpdate < lastTickTime;
+        if (moving != isMoving()) {
+            setMoving(moving);
+        }
     }
 
     /**
@@ -385,15 +396,18 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
     }
 
     public float getAlpha() {
-        return (float) (System.nanoTime() - tickStartTimestamp) / lastTickTime;
+        var alpha = (float) (System.nanoTime() - tickStartTimestamp) / lastTickTime;
+        return alpha;
     }
 
     public float getInterpolatedX() {
-        return getPosition().getInterpolatedX(getAlpha());
+        return moving ? getPosition().getInterpolatedX(getAlpha())
+                : (float) getPosition().getX();
     }
 
     public float getInterpolatedY() {
-        return getPosition().getInterpolatedY(getAlpha());
+        return moving ? getPosition().getInterpolatedY(getAlpha())
+                : (float) getPosition().getY();
     }
 
     public int getImageWidth() {
@@ -410,6 +424,11 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
     @Override
     public boolean visible() {
         return visible;
+    }
+
+    public void setImageSize(int width, int height) {
+        this.imageWidth = width;
+        this.imageHeight = height;
     }
 
     /**
