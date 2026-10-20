@@ -228,7 +228,6 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
      * @param newY the new Y-value the position is set to
      */
     protected void onPositionChange(double newX, double newY) {
-        moving = true;
     }
 
     /**
@@ -396,8 +395,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
     }
 
     public float getAlpha() {
-        var alpha = (float) (System.nanoTime() - tickStartTimestamp) / lastTickTime;
-        return alpha;
+        return (float) (System.nanoTime() - tickStartTimestamp) / lastTickTime;
     }
 
     public float getInterpolatedX() {
