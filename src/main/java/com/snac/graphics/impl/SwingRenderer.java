@@ -14,6 +14,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
+import java.lang.reflect.InvocationTargetException;
 import java.util.function.BiConsumer;
 
 /**
@@ -83,38 +84,46 @@ public class SwingRenderer implements Renderer<BufferedImage> {
 
         //System.setProperty("sun.java2d.opengl", "true");
 
-        SwingUtilities.invokeLater(() -> {
-            frame = new JFrame();
-            swingCanvas = new java.awt.Canvas();
-            swingCanvas.setPreferredSize(new Dimension(width, height));
-            swingCanvas.setIgnoreRepaint(true);
+        try {
+            SwingUtilities.invokeAndWait(() -> {
+                log.info("Configuring swing canvas");
+                swingCanvas = new java.awt.Canvas();
+                swingCanvas.setPreferredSize(new Dimension(width, height));
+                swingCanvas.setIgnoreRepaint(true);
 
-            frame.setTitle(title);
-            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.add(swingCanvas);
-            frame.pack();
-            frame.setLocationRelativeTo(null);
-            frame.setVisible(true);
-            frame.validate();
-            frame.requestFocus();
+                log.info("Configuring JFrame");
+                frame = new JFrame();
+                frame.setTitle(title);
+                frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                frame.add(swingCanvas);
+                frame.pack();
+                frame.setLocationRelativeTo(null);
+                frame.setVisible(true);
+                frame.validate();
+                frame.requestFocus();
 
+                log.info("Creating buffer strategy");
+                swingCanvas.createBufferStrategy(getBuffers());
+                bufferStrategy = swingCanvas.getBufferStrategy();
 
-            swingCanvas.createBufferStrategy(getBuffers());
-            bufferStrategy = swingCanvas.getBufferStrategy();
+                log.info("Initializing Brush");
+                brush = new SwingBrush(this, bufferStrategy.getDrawGraphics());
 
-            brush = new SwingBrush(this, bufferStrategy.getDrawGraphics());
+                log.info("Starting render loop");
+                startRenderLoop();
 
-            startRenderLoop();
-
-            frame.addWindowListener(new WindowAdapter() {
-                @Override
-                public void windowClosing(WindowEvent e) {
-                    loop.stop();
-                    log.info("JFrame has been terminated");
-                }
+                frame.addWindowListener(new WindowAdapter() {
+                    @Override
+                    public void windowClosing(WindowEvent e) {
+                        loop.stop();
+                        log.info("JFrame has been terminated");
+                    }
+                });
+                log.info("Created window and started rendering");
             });
-            log.info("Created window and started rendering");
-        });
+        } catch (InterruptedException | InvocationTargetException e) {
+            log.error(e.getMessage(), e);
+        }
     }
 
     protected void startRenderLoop() {
