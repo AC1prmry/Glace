@@ -1,8 +1,14 @@
-## Prefixes
-- `feat:` A new feature or capability
+## Commit Messages
+
+We follow the [Conventional Commits](https://www.conventionalcommits.org/) specification.
+Please start your commit messages with one of the following prefixes:
+
+- `feat:` A new feature
 - `fix:` A bug fix
-- `refactor:` Code changes that neither fix a bug nor add a feature (code restructuring)
-- `wip:` Work in progress (temporary commits for switching devices or backing up unpolished code)
-- `docs:` Documentation only changes (e.g., README updates)
-- `style:` Changes that do not affect the meaning of the code (formatting, missing semicolons, etc.)
-- `test:` Adding missing tests or correcting existing ones
+- `build:` Changes to dependencies, build configuration (Maven/Gradle), or CI/CD
+- `refactor:` Code changes that neither fix a bug nor add a feature
+- `docs:` Documentation updates
+- `style:` Code style, formatting, missing semicolons
+- `test:` Adding or updating tests
+- `chore:` Other maintenance tasks
+- `wip:` Work in progress
