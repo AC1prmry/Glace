@@ -57,7 +57,7 @@ public class ObjectManager<I> {
      * @param object the object to add
      * @return this manager instance, for chaining
      */
-    public ObjectManager<?> addObject(AbstractObjectBase<I> object) {
+    public ObjectManager<I> addObject(AbstractObjectBase<I> object) {
         if (objects.add(object)) {
             object.internalCreate(this);
             renderer.getCanvas().addRenderable(object);
@@ -79,7 +79,7 @@ public class ObjectManager<I> {
      * @param id the id of the object you want to destroy
      * @return this manager instance, for chaining
      */
-    public ObjectManager<?> destroyObject(long id) {
+    public ObjectManager<I> destroyObject(long id) {
         getObjectFromID(id).ifPresent(this::destroyObject);
         return this;
     }
@@ -90,7 +90,7 @@ public class ObjectManager<I> {
      * @param object the object to destroy
      * @return this manager instance, for chaining
      */
-    public ObjectManager<?> destroyObject(AbstractObjectBase<I> object) {
+    public ObjectManager<I> destroyObject(AbstractObjectBase<I> object) {
         if (objects.remove(object)) {
             object.onDestroy();
             renderer.getCanvas().removeRenderable(object);
@@ -211,7 +211,7 @@ public class ObjectManager<I> {
      * @param Object The object to check for collisions with
      * @return {@code true} if the object collides with any other object, otherwise {@code false}
      */
-    public boolean collides(AbstractObjectBase<?> Object) {
+    public boolean collides(AbstractObjectBase<I> Object) {
         return !getCollisions(Object).isEmpty();
     }
 
