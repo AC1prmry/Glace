@@ -35,7 +35,7 @@ public class SwingImageLoader extends ImageLoader<BufferedImage> {
     public BufferedImage load(String path) {
         BufferedImage image;
         try (var stream = ImageLoader.class.getResourceAsStream(path)) {
-            if (stream == null) throw new FileNotFoundException("Ressource not found:" + path);
+            if (stream == null) throw new FileNotFoundException("Resource not found:" + path);
 
             image = ImageIO.read(stream);
             log.info("Loaded image from: {}", path);
@@ -44,7 +44,7 @@ public class SwingImageLoader extends ImageLoader<BufferedImage> {
             log.warn("Failed to load image from: '{}' | '{}'. Returned fallback image", path, e.toString());
         }
 
-        return null;
+        return FALLBACK_IMAGE;
     }
 
     /**
