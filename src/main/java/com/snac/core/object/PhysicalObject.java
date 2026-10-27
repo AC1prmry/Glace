@@ -32,7 +32,7 @@ public abstract class PhysicalObject<I> extends AbstractObjectBase<I> {
     }
 
     @Override
-    protected void onUpdate(double deltaTime) {
+    protected void onUpdate() {
         if (!velocity.isZero()) {
             position.set(position.getX() + velocity.getX(), position.getY() + velocity.getY());
             velocity.set(velocity.getX() * slowFactor, velocity.getY() * slowFactor);
