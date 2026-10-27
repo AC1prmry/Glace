@@ -27,7 +27,7 @@ import java.util.function.Consumer;
  * <p><strong>Note</strong></p>
  * <ul>
  *   <li>{@link #internalCreate(ObjectManager)} is invoked by the framework to register the object and then call {@link #onCreate()}.</li>
- *   <li>{@link #internalUpdate(double)} is invoked by the framework every tick and delegates to {@link #onUpdate(double)}.</li>
+ *   <li>{@link #internalUpdate()} is invoked by the framework every tick and delegates to {@link #onUpdate()}.</li>
  * </ul>
  * <p>
  * To provide functionality for your game objects, you need to add them to a valid {@link ObjectManager} instance.
@@ -51,7 +51,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
      * {@link com.snac.graphics.Renderer Renderer}) at which this object still gets updated.
      * <p>
      * If the distance is greater than this value, {@link #disabled} is set to {@code true}
-     * and {@link #onUpdate(double)} won't be called anymore.
+     * and {@link #onUpdate()} won't be called anymore.
      * Moving the object back within range re-enables updates.
      * </p>
      * <p>
@@ -82,9 +82,9 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
 
     /**
      * Whether this object is updated or not.
-     * If {@code true}, {@link #onUpdate(double)} will no longer be called.
+     * If {@code true}, {@link #onUpdate()} will no longer be called.
      * <p>
-     * See also {@link #tickDistance}, {@link #internalUpdate(double)} and
+     * See also {@link #tickDistance}, {@link #internalUpdate()} and
      * {@link #onPositionChanged(double, double)}.
      * </p>
      */
@@ -300,10 +300,8 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
      * Implementations should advance the object's state according to the elapsed time
      * and game logic.
      * Avoid blocking operations.
-     *
-     * @param deltaTime time elapsed since the previous update
      */
-    protected abstract void onUpdate(double deltaTime);
+    protected abstract void onUpdate();
 
     /**
      * One-time initialization hook invoked after the object has been added to a valid {@link ObjectManager}.
@@ -319,14 +317,12 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
     protected void onDestroy() {}
 
     /**
-     * Framework-internal update entry point; delegates to {@link #onUpdate(double)}.
+     * Framework-internal update entry point; delegates to {@link #onUpdate()}.
      * Not intended to be overridden by subclasses.
-     *
-     * @param deltaTime time elapsed since the previous update
      */
-    void internalUpdate(double deltaTime) {
+    void internalUpdate() {
         if (disabled) return;
-        onUpdate(deltaTime);
+        onUpdate();
 
         lastTickTime = System.nanoTime() - tickStartTimestamp;
         tickStartTimestamp = System.nanoTime();

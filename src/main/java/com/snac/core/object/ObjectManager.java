@@ -13,7 +13,7 @@ import java.util.function.Consumer;
  * This class is thread safe (at least I hope so) and does all the work related to objects for you.
  *
  * <p>
- * <b>Important Note:</b> It is important to call {@link #tick(double)} every calculation cycle.
+ * <b>Important Note:</b> It is important to call {@link #tick()} every calculation cycle.
  * <br>(Also see {@link com.snac.core.Glace Glace standard implementation})
  * </p>
  *
@@ -108,13 +108,11 @@ public class ObjectManager<I> {
     /**
      * This method ensures that all objects are updated.
      * This method must be called every calculation cycle, maybe from the main {@link com.snac.util.Loop}.
-     *
-     * @param deltaTime the time passed since the last update
      */
-    public void tick(double deltaTime) {
+    public void tick() {
         synchronized (objects) {
             for (var object : objects) {
-                object.internalUpdate(deltaTime);
+                object.internalUpdate();
             }
         }
     }

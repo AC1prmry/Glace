@@ -76,8 +76,8 @@ public final class Glace {
     /**
      * May throw {@link NullPointerException NPE} if Glace was instantiated but not {@link #start() started}
      */
-    public void tick(double deltaTime) {
-        objectManager.tick(deltaTime);
+    public void tick() {
+        objectManager.tick();
         animationHandler.tick();
 
         if (tickHook != null) tickHook.run();
@@ -85,7 +85,7 @@ public final class Glace {
 
     private void startGameLoop(int tps) {
         loop.startTickLoop(tps, (fps, deltaTime) -> {
-            tick(deltaTime);
+            tick();
             this.currentGameLoopTPS = fps;
         });
     }
