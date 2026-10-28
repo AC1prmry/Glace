@@ -164,6 +164,9 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
     @Setter
     private volatile int imageHeight;
 
+    @Setter
+    private boolean interpolatedRendering;
+
     /**
      * The direction of the object. Also see {@link Direction}
      */
@@ -218,6 +221,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
         this.hitBox = new HitBox(this.position.getXRound(), this.position.getYRound(), getWidth(), getHeight());
         this.timeCreated = System.currentTimeMillis();
         this.id = ObjectManager.getNextID();
+        this.interpolatedRendering = true;
     }
 
     /**
@@ -274,7 +278,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
     /**
      * Renders this object with the given brush.
      * <p>
-     * <b>Recommendation:</b> Use {@link Renderer#getInterpolatedX(float, float, float)} and {@link Renderer#getInterpolatedY(float, float, float)} for smooth rendering
+     * <b>Recommendation:</b> Use {@link #getInterpolatedX()} and {@link #getInterpolatedY()} for smooth rendering
      *
      * @param brush drawing context provided by the renderer
      */
@@ -282,8 +286,8 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
     public void render(Brush<I> brush) {
         if (visible() && getImage() != null) {
             brush.drawImage(getImage(),
-                    Math.round(getInterpolatedX()),
-                    Math.round(getInterpolatedY()),
+                    isInterpolatedRendering() ? Math.round(getInterpolatedX()) : getPosition().getXRound(),
+                    isInterpolatedRendering() ? Math.round(getInterpolatedY()) : getPosition().getYRound(),
                     getImageWidth(), getImageHeight());
         }
 
@@ -301,7 +305,16 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
      * and game logic.
      * Avoid blocking operations.
      */
-    protected abstract void onUpdate();
+    protected void onUpdate() {
+        lastTickTime = System.nanoTime() - tickStartTimestamp;
+        tickStartTimestamp = System.nanoTime();
+
+        var lastPositionUpdate = System.nanoTime() - getPosition().getLastUpdated();
+        var moving = lastPositionUpdate < lastTickTime;
+        if (moving != isMoving()) {
+            setMoving(moving);
+        }
+    }
 
     /**
      * One-time initialization hook invoked after the object has been added to a valid {@link ObjectManager}.
@@ -323,15 +336,6 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
     void internalUpdate() {
         if (disabled) return;
         onUpdate();
-
-        lastTickTime = System.nanoTime() - tickStartTimestamp;
-        tickStartTimestamp = System.nanoTime();
-
-        var lastPositionUpdate = System.nanoTime() - getPosition().getLastUpdated();
-        var moving = lastPositionUpdate < lastTickTime;
-        if (moving != isMoving()) {
-            setMoving(moving);
-        }
     }
 
     /**
