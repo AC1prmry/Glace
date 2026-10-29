@@ -159,6 +159,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
     @Nullable
     private volatile I image;
 
+    @Setter
     private volatile int imageWidth;
 
     @Setter
@@ -424,9 +425,14 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
         return visible;
     }
 
+    public void resize(int width, int height) {
+        setWidth(width);
+        setHeight(height);
+    }
+
     public void setImageSize(int width, int height) {
-        this.imageWidth = width;
-        this.imageHeight = height;
+        setImageWidth(width);
+        setImageHeight(height);
     }
 
     /**

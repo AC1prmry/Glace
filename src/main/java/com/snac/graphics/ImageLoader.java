@@ -56,13 +56,13 @@ public abstract class ImageLoader<I> {
 
     /**
      * Returns a cached image for the given path if available,
-     * otherwise loads it using {@link #load(String)} and caches it under a hashed name.
+     * otherwise loads it using {@link #load(String)} and caches it under its path as string.
      *
      * @param path The path to the image resource
      * @return The cached or newly loaded image instance
      */
     public I getCachedOrLoad(String path) {
-        return getCachedOrLoad(path, String.valueOf(path.hashCode()));
+        return getCachedOrLoad(path, path);
     }
 
     /**
