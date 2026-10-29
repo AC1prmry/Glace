@@ -425,7 +425,7 @@ public abstract class AbstractObjectBase<I> extends Attachable<AbstractObjectBas
         return visible;
     }
 
-    public void resize(int width, int height) {
+    public void setSize(int width, int height) {
         setWidth(width);
         setHeight(height);
     }
